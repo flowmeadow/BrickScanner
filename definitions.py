@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 """
-@Introduce : TODO
+@Introduce : Contains project constants
 @File      : definitions.py
 @Project   : BrickScanner
 @Time      : 06.03.22 14:52

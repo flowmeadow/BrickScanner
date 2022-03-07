@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 """
-@Introduce : TODO
+@Introduce : Contains methods and functions for data loading and saving
 @File      : data_management.py
 @Project   : BrickScanner
 @Time      : 06.03.22 14:45

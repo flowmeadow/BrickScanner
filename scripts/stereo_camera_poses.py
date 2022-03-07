@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 """
-@Introduce : TODO
+@Introduce : Estimate relative camera poses of a stereo setup based on calibration images
 @File      : stereo_camera_poses.py
 @Project   : BrickScanner
 @Time      : 16.02.22 17:39
