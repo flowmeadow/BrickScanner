@@ -14,15 +14,7 @@ from datetime import datetime
 
 import cv2
 from definitions import *
-
-VIDEO_RES = (352, 288)
-IMAGE_RES = (1280, 960)
-
-
-def change_resolutions(cam, resolution):
-    print(f"Change camera resolution to {resolution[0]}x{resolution[1]}")
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution[1])
+from lib.cam_mangement import change_resolutions
 
 
 def main():
@@ -57,11 +49,13 @@ def main():
         elif key & 0xFF == ord("s"):
             cam_2.release()
             change_resolutions(cam_1, IMAGE_RES)
-            ret_1, frame_1 = cam_1.read()
+            for i in range(10):
+                ret_1, frame_1 = cam_1.read()
             cam_1.release()
             cam_2 = cv2.VideoCapture(cam_ids[1])
             change_resolutions(cam_2, IMAGE_RES)
-            ret_2, frame_2 = cam_2.read()
+            for i in range(10):
+                ret_2, frame_2 = cam_2.read()
             cam_1 = cv2.VideoCapture(cam_ids[0])
             for cam in [cam_1, cam_2]:
                 change_resolutions(cam, VIDEO_RES)

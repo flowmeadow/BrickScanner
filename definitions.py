@@ -10,6 +10,12 @@
 
 import os
 
+# paths
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 IMG_DIR = os.path.join(ROOT_DIR, 'images')
 CAM_DIR = os.path.join(ROOT_DIR, 'calibration/Logitech C270')
+SETUP_DIR = os.path.join(ROOT_DIR, 'calibration/setup')
+
+# camera settings
+VIDEO_RES = (352, 288)
+IMAGE_RES = (1280, 960)
