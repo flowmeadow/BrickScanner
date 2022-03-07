@@ -11,26 +11,11 @@ import cv2
 import numpy as np
 from definitions import *
 from lib.cam_mangement import change_resolutions
-
+from lib.windows.interactive_window import InteractiveWindow
 global mouseX, mouseY
 
 
 DISPLAY_RES = (1760, 720)
-
-
-class InteractiveWindow(object):
-    def __init__(self, name):
-        self.name = name
-        self.mouse_pos_x, self.mouse_pos_y = None, None
-        cv2.namedWindow(self.name)
-        cv2.setMouseCallback(self.name, self.get_mouse_pos)
-
-    def get_mouse_pos(self, event, x, y, flags, param):
-        if event == cv2.EVENT_LBUTTONDBLCLK:
-            self.mouse_pos_x, self.mouse_pos_y = x, y
-
-    def imshow(self, frame):
-        cv2.imshow(self.name, frame)
 
 
 def main():
@@ -39,12 +24,12 @@ def main():
     cam_1, cam_2 = None, None
     imgLeft, imgRight = None, None
     if use_image:
-        directory_name = "test_01"  # "epipolar"
+        directory_name = "test_02"  # "epipolar"
         image_path = f"{IMG_DIR}/{directory_name}"
         for file_name in sorted(os.listdir(f"{image_path}/left")):
             imgLeft = cv2.imread(f"{image_path}/left/{file_name}")
             imgRight = cv2.imread(f"{image_path}/right/{file_name}")
-            break
+
         img_res = IMAGE_RES
     else:
         print("Initialize cameras")
@@ -91,7 +76,7 @@ def main():
                 x0, y0 = map(int, [0, -line[2] / line[1]])
                 x1, y1 = map(int, [c, -(line[2] + line[0] * c) / line[1]])
 
-                frame_2 = cv2.line(frame_2, (x0, y0), (x1, y1), (0, 0, 255), 1)
+                frame_2 = cv2.line(frame_2, (x0, y0), (x1, y1), (0, 0, 255), 2)
             else:
                 x = int((x - DISPLAY_RES[0] / 2) * 2 * IMAGE_RES[0] / DISPLAY_RES[0])
                 y = int(y * IMAGE_RES[1] / DISPLAY_RES[1])
@@ -104,7 +89,7 @@ def main():
                 x0, y0 = map(int, [0, -line[2] / line[1]])
                 x1, y1 = map(int, [c, -(line[2] + line[0] * c) / line[1]])
 
-                frame_1 = cv2.line(frame_1, (x0, y0), (x1, y1), (0, 0, 255), 1)
+                frame_1 = cv2.line(frame_1, (x0, y0), (x1, y1), (0, 0, 255), 2)
 
         frame = cv2.hconcat([frame_1, frame_2])
         frame = cv2.resize(frame, DISPLAY_RES)

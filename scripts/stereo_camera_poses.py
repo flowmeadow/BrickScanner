@@ -18,7 +18,7 @@ from definitions import *
 def main():
     # Load the left and right images
     # in gray scale
-    directory_name = "calibration_4"  # "epipolar"
+    directory_name = "calibration_5"  # "epipolar"
     image_path = f"{IMG_DIR}/{directory_name}"
     new_points_right, new_points_left = [], []
     for file_name in sorted(os.listdir(f"{image_path}/left")):
