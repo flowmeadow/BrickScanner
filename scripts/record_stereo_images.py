@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 """
-@Introduce : TODO
+@Introduce : Records sveral stereo images with a stereo camera setup
 @File      : record_stereo_images.py
-@Project   : LECVO
+@Project   : BrickScanner
 @Time      : 11.02.22 20:22
 @Author    : flowmeadow
 """
+
 import os
 import time
 from datetime import datetime
