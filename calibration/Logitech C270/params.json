@@ -1,0 +1,35 @@
+{
+    "camera": "Logitech HD Webcam C270 (046d:0825)",
+    "platform": "Windows NT 10.0; Win64; x64",
+    "avg_reprojection_error": 0.2371435843490251,
+    "camera_matrix": [
+        [
+            1419.6926739461624,
+            0,
+            624.4230937815905
+        ],
+        [
+            0,
+            1419.204023362152,
+            317.19888645121466
+        ],
+        [
+            0,
+            0,
+            1
+        ]
+    ],
+    "distortion_coefficients": [
+        -0.08174898861768103,
+        0.7788678863139611,
+        -0.0013206631540635927,
+        -0.0007550030347675038,
+        -2.335050308666308
+    ],
+    "distortion_model": "rectilinear",
+    "img_size": [
+        1280,
+        720
+    ],
+    "calibration_time": "Tue, 26 May 2020 14:05:04 GMT"
+}
