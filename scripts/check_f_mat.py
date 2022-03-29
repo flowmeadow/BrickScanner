@@ -7,95 +7,98 @@
 @Time      : 07.03.22 15:39
 @Author    : flowmeadow
 """
+import os
+import sys
+
+sys.path.append(os.getcwd())  # required to run script from console
+
+from typing import Tuple
+
 import cv2
 import numpy as np
 from definitions import *
-from lib.cam_mangement import change_resolutions
 from lib.windows.interactive_window import InteractiveWindow
-global mouseX, mouseY
+
+DISPLAY_RES = (int(2560 * 0.75), int(720 * 0.75))
 
 
-DISPLAY_RES = (1760, 720)
+def draw_line_for_point(frame: np.array, p: Tuple[int, int], F: np.array, img_idx: int) -> np.array:
+    """
+    Computes the epiline for a 2D point p and draws it in the given frame
+    :param frame: image frame to draw the line in
+    :param p: 2D point (x, y)
+    :param F: fundamental matrix
+    :param img_idx: defines if the epiline in the left (1) or right (2) image is computed
+    :return:
+    """
+    if img_idx not in [1, 2]:
+        raise NotImplementedError
+
+    r, c = frame.shape[:2]
+    # compute line params
+    line = cv2.computeCorrespondEpilines(np.array(p).reshape(1, 2), img_idx, F)
+    line = line.flatten()
+
+    # draw line to frame
+    x0, y0 = map(int, [0, -line[2] / line[1]])
+    x1, y1 = map(int, [c, -(line[2] + line[0] * c) / line[1]])
+
+    return cv2.line(frame, (x0, y0), (x1, y1), (0, 0, 255), 2)
 
 
-def main():
-    use_image = True  # TODO: due to wrong format, video is not working
+def main(directory_name, img_idx=0):
+    """
+    Program that displays the corresponding epiline for a clicked point.
+    TODO: check F not only from stored images but real time camera captures
+    :param directory_name: name of the directory to load the image pair from
+    :param img_idx: index of the image pair to chose
+    """
 
-    cam_1, cam_2 = None, None
-    imgLeft, imgRight = None, None
-    if use_image:
-        directory_name = "test_02"  # "epipolar"
-        image_path = f"{IMG_DIR}/{directory_name}"
-        for file_name in sorted(os.listdir(f"{image_path}/left")):
-            imgLeft = cv2.imread(f"{image_path}/left/{file_name}")
-            imgRight = cv2.imread(f"{image_path}/right/{file_name}")
+    # load image pair from directory
+    img_path = f"{IMG_DIR}/{directory_name}"
+    file_name = sorted(os.listdir(f"{img_path}/left"))[img_idx]
+    imgLeft = cv2.imread(f"{img_path}/left/{file_name}")
+    imgRight = cv2.imread(f"{img_path}/right/{file_name}")
 
-        img_res = IMAGE_RES
-    else:
-        print("Initialize cameras")
-        cam_ids = [2, 0]  # left, right
-        cam_1 = cv2.VideoCapture(cam_ids[0])
-        cam_2 = cv2.VideoCapture(cam_ids[1])
-        for cam in [cam_1, cam_2]:
-            change_resolutions(cam, VIDEO_RES)
-
+    # initialize window
     win = InteractiveWindow("frame")
 
-    F = np.load(f"{SETUP_DIR}/F_mat.npy")
-    print("Start main loop")
+    # load fundamental matrix
+    F = np.load(f"{SETUP_DIR}/F.npy")
+
+    frame_l = imgLeft.copy()
+    frame_r = imgRight.copy()
+
+    # program loop
     while True:
-        # Capture frame-by-frame
-        if use_image:
-            frame_1 = imgLeft.copy()
-            frame_2 = imgRight.copy()
-        else:
-            ret_1, frame_1 = cam_1.read()
-            ret_2, frame_2 = cam_2.read()
 
+        # check for quit (q)
         key = cv2.waitKey(1)
         if key & 0xFF == ord("q"):
             break
 
-        # Display the resulting frame
-
-        key = cv2.waitKey(1)
-        if key & 0xFF == ord("q"):
-            break
-
+        # check for mouse button press
         x, y = win.mouse_pos_x, win.mouse_pos_y
         if x is not None and y is not None:
-            if x < DISPLAY_RES[0] / 2:
-                x = int(x * 2 * IMAGE_RES[0] / DISPLAY_RES[0])
-                y = int(y * IMAGE_RES[1] / DISPLAY_RES[1])
-                frame_1 = cv2.circle(frame_1, (x, y), 10, (0, 0, 255), 2)
+            frame_l = imgLeft.copy()
+            frame_r = imgRight.copy()
+            if x < DISPLAY_RES[0] / 2:  # left image half was clicked
+                x = int(x * 2 * frame_l.shape[1] / DISPLAY_RES[0])
+                y = int(y * frame_l.shape[0] / DISPLAY_RES[1])
+                frame_l = cv2.circle(frame_l, (x, y), 10, (0, 0, 255), 2)  # draw circle at mouse pos
+                frame_r = draw_line_for_point(frame_r, (x, y), F, 1)  # draw epiline in other image
+            else:  # right image half was clicked
+                x = int((x - DISPLAY_RES[0] / 2) * 2 * frame_l.shape[1] / DISPLAY_RES[0])
+                y = int(y * frame_l.shape[0] / DISPLAY_RES[1])  # draw circle at mouse pos
+                frame_r = cv2.circle(frame_r, (x, y), 10, (0, 0, 255), 2)
+                frame_l = draw_line_for_point(frame_l, (x, y), F, 2)  # draw epiline in other image
+            win.reset_mouse()
 
-                r, c = frame_1.shape[:2]
-                line = cv2.computeCorrespondEpilines(np.array([x, y]).reshape(-1, 1, 2), 1, F)
-                line = line.flatten()
-
-                x0, y0 = map(int, [0, -line[2] / line[1]])
-                x1, y1 = map(int, [c, -(line[2] + line[0] * c) / line[1]])
-
-                frame_2 = cv2.line(frame_2, (x0, y0), (x1, y1), (0, 0, 255), 2)
-            else:
-                x = int((x - DISPLAY_RES[0] / 2) * 2 * IMAGE_RES[0] / DISPLAY_RES[0])
-                y = int(y * IMAGE_RES[1] / DISPLAY_RES[1])
-                frame_2 = cv2.circle(frame_2, (x, y), 10, (0, 0, 255), 2)
-
-                r, c = frame_1.shape[:2]
-                line = cv2.computeCorrespondEpilines(np.array([x, y]).reshape(-1, 1, 2), 2, F)
-                line = line.flatten()
-
-                x0, y0 = map(int, [0, -line[2] / line[1]])
-                x1, y1 = map(int, [c, -(line[2] + line[0] * c) / line[1]])
-
-                frame_1 = cv2.line(frame_1, (x0, y0), (x1, y1), (0, 0, 255), 2)
-
-        frame = cv2.hconcat([frame_1, frame_2])
+        # concatenate images and show final frame
+        frame = cv2.hconcat([frame_l, frame_r])
         frame = cv2.resize(frame, DISPLAY_RES)
-
         win.imshow(frame)
 
 
 if __name__ == "__main__":
-    main()
+    main("test_06", 1)

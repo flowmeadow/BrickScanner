@@ -17,5 +17,5 @@ CAM_DIR = os.path.join(ROOT_DIR, 'calibration/Logitech C270')
 SETUP_DIR = os.path.join(ROOT_DIR, 'calibration/setup')
 
 # camera settings
-VIDEO_RES = (352, 288)
-IMAGE_RES = (1280, 960)
+# VIDEO_RES = (1920, 1080)  # (800, 600)  # (320, 240)
+# IMAGE_RES = (1920, 1080)
