@@ -20,7 +20,7 @@ from lib.recon.epipolar import epipolar_distance
 from lib.recon.masking import mask_from_ref
 from lib.recon.triangulation import dlt
 
-from scripts.point_cloud import MyScreen
+from scripts.point_cloud import CloudScreen
 
 
 def concat_and_show(frame_1, frame_2):
@@ -154,7 +154,7 @@ def main():
         p3ds[:, idx] -= min_v
 
     p3ds /= np.max(p3ds)
-    demo = MyScreen(points=p3ds, colors=colors, fullscreen=True)
+    demo = CloudScreen(points=p3ds, colors=colors, fullscreen=True)
     demo.run()
 
 

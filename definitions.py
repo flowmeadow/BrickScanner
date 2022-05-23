@@ -15,6 +15,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 IMG_DIR = os.path.join(ROOT_DIR, 'images')
 CAM_DIR = os.path.join(ROOT_DIR, 'calibration/Logitech C270')
 SETUP_DIR = os.path.join(ROOT_DIR, 'calibration/setup')
+MODEL_DIR = os.path.join(ROOT_DIR, '../pygletPlayground/rendering/models/model_files')
 
 # camera settings
 # VIDEO_RES = (1920, 1080)  # (800, 600)  # (320, 240)
