@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 """
-@Introduce : TODO
+@Introduce : Script to test the 3d reconstruction from images generated with an OpenGL simulator
 @File      : recon_test_setup.py
 @Project   : BrickScanner
 @Time      : 07.03.22 17:53
@@ -15,145 +15,111 @@ sys.path.append(os.getcwd())  # required to run script from console
 import cv2
 import numpy as np
 from definitions import *
-from lib.recon.triangulation import dlt
-from rendering.models.model_generation.geometry import sphere
-from transformations.methods import construct_T, rot_mat
-
-from scripts.point_cloud import CloudScreen
-from scripts.stereo_test import TestScreen
+from glpg_flowmeadow.rendering.models.model_generation.geometry import sphere
+from lib.simulator.cloud_app import CloudApp
+from lib.simulator.test_recon_app import TestReconApp
 
 
-def concat_and_show(frame_1, frame_2):
+def concat_and_show(frame_1: np.ndarray, frame_2: np.ndarray):
+    """
+    Concatenate and show two images side by side.
+    :param frame_1: image array
+    :param frame_2: image array
+    """
     frame = cv2.hconcat((frame_1, frame_2))
     frame = cv2.resize(frame, (1760, 720))
     cv2.imshow("frame", frame)
     cv2.waitKey()
+    cv2.destroyAllWindows()
 
 
-def unique_colors(num):
-    c_num = np.ceil(np.cbrt(num) + 1.0).astype(int)
-    c_bar = np.linspace(
-        0.0,
-        1.0,
-        c_num,
-    )
-    colors = np.array(np.meshgrid(c_bar, c_bar, c_bar)).T.reshape(-1, 3)
-    return colors[1 : num + 1, :]
+def unique_colors(pts: np.ndarray) -> np.ndarray:
+    """
+    Generate RGB color array based on point positions
+    :param pts: points array (n, 3)
+    :return: RGB array (n, 3)
+    """
+    colors = pts.copy()
+    colors -= np.min(colors, axis=0)
+    colors /= np.max(colors, axis=0)
+    return colors
 
 
-def main():
-    image_path = f"{IMG_DIR}/gl_test_01"  # "epipolar"
-    generate_new = True
-    img_idx = 0
-    scale = 0.01
+def recon_test(image_path: str, generate_new=True):
+    """
+    Script to test the 3d reconstruction from images generated with an OpenGL simulator
+    :param image_path: path to save the images
+    :param generate_new: to skip image generation, set this to False
+    """
 
-    # SECTION: Generate image pairs
-
-    # load rotation matrix and translation vector
-    R = np.load(f"{SETUP_DIR}/R.npy")
-    # R = rot_mat(np.array([1., 1., 1.]), 20.)
-    t = np.load(f"{SETUP_DIR}/T.npy").flatten() * scale
-    # t = np.array([0.5, -0.5, 0.5])
-
-    # create transformation matrix from camera system 1 to camera system 2
-    # WARNING: no idea why t needs to be negative
-    T_cam = construct_T(R, -t)
-
+    # SECTION: generate reference points
     # create sphere point cloud
-    vertices, _ = sphere(1.0, refinement_steps=2)
-    vertices = vertices.astype(float)
-    print("Num Points:", vertices.shape[0])
+    pts_true, _ = sphere(radius=1.0, refinement_steps=3)
+    pts_true = pts_true.astype(float)
+    colors = unique_colors(pts_true)
+    print("Num Points:", pts_true.shape[0])
 
-    # create unique colors for each vertex
-    colors = unique_colors(vertices.shape[0])
-
+    # SECTION: generate stereo images from reference points
     # generate images of point cloud in simulator
     if generate_new:
-        pc = dict(points=vertices, colors=colors)
-        screen = TestScreen(T_cam, point_cloud=pc, file_path=image_path, fullscreen=True)
-        screen.run()
+        app = TestReconApp(pts_true, colors, file_path=image_path, fullscreen=True, vsync=False)
+        app.run()
+
+        if app.new_images:
+            np.save(f"{CALIB_DIR}/recon_test/K.npy", app.K)
+            np.save(f"{CALIB_DIR}/recon_test/T_W1.npy", app.T_W1)
+            np.save(f"{CALIB_DIR}/recon_test/T_W2.npy", app.T_W2)
+
+    T_W1 = np.load(f"{CALIB_DIR}/recon_test/T_W1.npy")
+    T_W2 = np.load(f"{CALIB_DIR}/recon_test/T_W2.npy")
 
     # SECTION: load images
     print("Load image pair")
     file_names = sorted(os.listdir(f"{image_path}/left"))
-    img_left = cv2.imread(f"{image_path}/left/{file_names[img_idx]}")
-    img_right = cv2.imread(f"{image_path}/right/{file_names[img_idx]}")
+    img_left = cv2.imread(f"{image_path}/left/{file_names[0]}")
+    img_right = cv2.imread(f"{image_path}/right/{file_names[0]}")
     concat_and_show(img_left, img_right)
 
     # SECTION: find keypoint correspondence by unique color
-    print("Find keypoints")
+    kpts_left, kpts_right = np.zeros([2, colors.shape[0]]), np.zeros([2, colors.shape[0]])
+    for idx, color in enumerate(colors):
+        thresh = 1.0e-6 * 255  # in simulation only required for rounding errors. can be very small
+        color = np.flip(color) * 255  # OpenCV uses BGR instead of RGB
 
-    def get_kp(frame, rgb, thresh=0.005):
-        error = thresh * 255
-        diff = np.sum(np.abs(frame - np.flip(rgb)), axis=2)
-        idcs = np.array(np.where(diff < error)).T
-        return np.flip(np.mean(idcs, axis=0))
+        # for each color get a binary mask and its mass center as ...
+        # ... keypoint for the left image
+        mask = cv2.inRange(img_left, color - thresh, color + thresh)
+        M = cv2.moments(mask)
+        kp_left = (M["m10"] / M["m00"], M["m01"] / M["m00"])
+        # ... keypoint for the right image
+        mask = cv2.inRange(img_right, color - thresh, color + thresh)
+        M = cv2.moments(mask)
+        kp_right = (M["m10"] / M["m00"], M["m01"] / M["m00"])
 
-    kp_left, kp_right = [], []
-    for color in colors:
-        color = color * 255
-        kp_left.append(cv2.KeyPoint(*get_kp(img_left, color), 1))
-        kp_right.append(cv2.KeyPoint(*get_kp(img_right, color), 1))
+        kpts_left[:, idx] = kp_left
+        kpts_right[:, idx] = kp_right
 
     # SECTION: reconstruct point cloud
-    K = np.array(
-        [
-            [1.30367535e03, 0.00000000e00, 9.60000000e02],
-            [0.00000000e00, -1.30367537e03, 5.40000000e02],
-            [0.00000000e00, 0.00000000e00, 1.00000000e00],
-        ]
-    )
-    K = np.load(f"{image_path}/cam_K.npy")
+    K = np.load(f"{CALIB_DIR}/recon_test/K.npy")  # OpenCV camera matrix
+    T_1W = np.linalg.inv(T_W1)  # transformation matrix from 3d world space to 3d cam 1 space
+    T_2W = np.linalg.inv(T_W2)  # transformation matrix from 3d world space to 3d cam 2 space
+    P1 = K @ T_1W[:3]  # projection matrix from 3d world space to cam 1 image space
+    P2 = K @ T_2W[:3]  # projection matrix from 3d world space to cam 2 image space
 
-    RT1 = np.concatenate([np.eye(3), [[0], [0], [0]]], axis=-1)
-    RT2 = np.concatenate([R, np.array([t]).T], axis=-1)
+    # triangulate keypoints
+    pts_recon = cv2.triangulatePoints(P1, P2, kpts_left, kpts_right).T
+    # returns are homogeneous, so they need to be transformed back to 3D
+    pts_recon = (pts_recon.T / pts_recon[:, 3]).T[:, :3]
 
-    P1 = K @ RT1  # projection matrix for C1
-    P2 = K @ RT2  # projection matrix for C2
-
-    p3ds = []
-    colors = []
-    for kp_l, kp_r in zip(kp_left, kp_right):
-
-        # compute with DLT
-        # _p3d = dlt(P1, P2, kp_l.pt, kp_r.pt)
-
-        # compute with OCV
-        _p3d = cv2.triangulatePoints(P1, P2, kp_l.pt, kp_r.pt).flatten()
-        _p3d = _p3d[:-1] / _p3d[-1]
-
-        p3ds.append(_p3d)
-
-        kp_l, kp_r = np.array(kp_l.pt).astype(int), np.array(kp_r.pt).astype(int)
-        c_l = img_left[kp_l[1], kp_l[0], :].astype(float)
-        c_r = img_right[kp_r[1], kp_r[0], :].astype(float)
-        colors.append((c_l + c_r) / 2)
-    p3ds = np.array(p3ds)
-    colors = np.flip(np.array(colors), axis=1) / 255
-
-    # SECTION: transform point cloud back to world coordinates
-
-    # transform point cloud based on cam pose
-    T_cam = np.load(f"{image_path}/cam_T.npy")
-    # WARNING: No idea why rotation part needs to be inverted
-    T_cam[:3, :3] *= -1
-
-    p3ds = np.concatenate([p3ds.T, [np.ones(p3ds.shape[0])]])
-    p3ds = T_cam @ p3ds
-    p3ds = p3ds.T[:, :-1]
-
-    print("Num Points:", p3ds.shape[0])
-    # SECTION: interactive point cloud presentation
-
-    error = np.sum((p3ds - vertices) ** 2, axis=1)
+    # SECTION: Presentation of reconstructed points and comparison with true points
+    error = np.sum((pts_recon - pts_true) ** 2, axis=1)
     print(f"Max error distance: {np.max(error)}")
     print(f"Mean error distance: {np.mean(error)}")
     print(f"STD error distance: {np.std(error)}")
 
-    demo = CloudScreen(points=p3ds, colors=colors, fullscreen=True)
-    demo.run()
+    app = CloudApp(points=pts_recon, colors=colors, fullscreen=True)
+    app.run()
 
 
 if __name__ == "__main__":
-    main()
-    cv2.destroyAllWindows()
+    recon_test(image_path=f"{IMG_DIR}/recon_test", generate_new=True)
