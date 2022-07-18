@@ -24,6 +24,39 @@ from pyglet.image import get_buffer_manager
 from pyglet.window import key as gl_key
 
 
+def init_cam_transforms(
+    dist=3.0,
+    axis_1=(0.0, -1.0, 0.0),
+    axis_2=(1.0, 0.0, 0.0),
+    angle_1=60.0,
+    angle_2=60.0,
+    gen_rand=False,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Define start positions of both stereo cameras
+    :param dist: distance to the world center
+    :param axis_1: rotation axis of cam 1
+    :param axis_2: rotation axis of cam 2
+    :param angle_1: rotation angle of cam 1
+    :param angle_2: rotation angle of cam 2
+    :param gen_rand: if true, generate random transformations
+    :return: two transformation matrices (4, 4)
+    """
+    if gen_rand:
+        axis_1, axis_2 = np.random.randn(3), np.random.randn(3)
+        angle_1, angle_2 = 360 * np.random.rand(), 360 * np.random.rand()
+
+    # cam 1
+    R_W1 = rot_mat(axis_1, angle_1)
+    t_W1 = R_W1 @ np.array([0.0, 0.0, -dist])
+    T_W1 = construct_T(R_W1, t_W1)
+    # cam 2
+    R_W2 = rot_mat(axis_2, angle_2)
+    t_W2 = R_W2 @ np.array([0.0, 0.0, -dist])
+    T_W2 = construct_T(R_W2, t_W2)
+    return T_W1, T_W2
+
+
 class CirclingCam(Camera):
     """Camera class that is controlled with ASDF and is circling around the coordinate center"""
 
@@ -79,17 +112,35 @@ class TestReconApp(GLScreen):
     - Quit app with Q
     """
 
-    def __init__(self, points: np.ndarray, colors: np.ndarray, file_path="", **kwargs):
+    def __init__(
+        self,
+        points: np.ndarray,
+        colors: np.ndarray,
+        file_path="",
+        automated=False,
+        gen_rand=False,
+        T_W1: np.ndarray = None,
+        T_W2: np.ndarray = None,
+        **kwargs,
+    ):
         """
         :param points: point coordinates (m, 3)
         :param colors: point colors (m, 3)
         :param file_path: directory to store the images
-        :param kwargs:
+        :param automated: If true, the image generation is done automatically and the app is closed afterwards
+        :param gen_rand: generate random camera positions
+        :param T_W1: Initial transformation matrix for cam 1 (4, 4)
+        :param T_W2: Initial transformation matrix for cam 2 (4, 4)
+        :param kwargs: forwarded keyword arguments
         """
         super().__init__(**kwargs)
+        self._auto = automated
 
         # initialize matrices
-        self.T_W1, self.T_W2 = self._initialize_transformations()
+        if T_W1 is not None and T_W2 is not None:
+            self.T_W1, self.T_W2 = T_W1, T_W2
+        else:
+            self.T_W1, self.T_W2 = init_cam_transforms(gen_rand=gen_rand)
         self.K = None
 
         # initialize cameras
@@ -104,7 +155,7 @@ class TestReconApp(GLScreen):
         self.point_cloud = PointCloud(points, colors, point_size=10)
 
         self.new_images = False  # Is set to True, if new images have been saved
-        self._save = False  # True if image saving process is running
+        self._save = self._auto  # True if image saving process is running
 
         self._frame_count = 0
         self._save_count = 0
@@ -228,5 +279,8 @@ class TestReconApp(GLScreen):
             self.K = get_K(get_P(), self.size)
             self.T_W1, self.T_W2 = self.cam_1.T, self.cam_2.T
             self.new_images = True
+            # close app if process is automated
+            if self._auto:
+                self.close()
         else:
             self.cam = self.cam_1  # switch to cam 1

@@ -22,7 +22,7 @@ from lib.simulator.test_recon_app import TestReconApp
 
 def concat_and_show(frame_1: np.ndarray, frame_2: np.ndarray):
     """
-    Concatenate and show two images side by side.
+    Concatenate and show two images side by side
     :param frame_1: image array
     :param frame_2: image array
     """
@@ -45,12 +45,29 @@ def unique_colors(pts: np.ndarray) -> np.ndarray:
     return colors
 
 
-def recon_test(image_path: str, generate_new=True):
+def recon_test(
+    folder_name: str,
+    generate_new=True,
+    automated=False,
+    gen_rand=False,
+    T_W1: np.ndarray = None,
+    T_W2: np.ndarray = None,
+):
     """
     Script to test the 3d reconstruction from images generated with an OpenGL simulator
-    :param image_path: path to save the images
+    :param folder_name: name of the experiment folder
+    :param automated: If true, the image generation is done automatically and the app is closed afterwards
+    :param gen_rand: generate random camera positions
     :param generate_new: to skip image generation, set this to False
+    :param T_W1: Initial transformation matrix for cam 1 (4, 4)
+    :param T_W2: Initial transformation matrix for cam 2 (4, 4)
     """
+    image_path = f"{IMG_DIR}/{folder_name}"
+    data_path = f"{DATA_DIR}/{folder_name}"
+    if not os.path.exists(image_path):
+        os.makedirs(image_path)
+    if not os.path.exists(data_path):
+        os.makedirs(data_path)
 
     # SECTION: generate reference points
     # create sphere point cloud
@@ -62,45 +79,66 @@ def recon_test(image_path: str, generate_new=True):
     # SECTION: generate stereo images from reference points
     # generate images of point cloud in simulator
     if generate_new:
-        app = TestReconApp(pts_true, colors, file_path=image_path, fullscreen=True, vsync=False)
+        app = TestReconApp(
+            pts_true,
+            colors,
+            file_path=image_path,
+            automated=automated,
+            fullscreen=True,
+            gen_rand=gen_rand,
+            T_W1=T_W1,
+            T_W2=T_W2,
+        )
         app.run()
-
         if app.new_images:
-            np.save(f"{CALIB_DIR}/recon_test/K.npy", app.K)
-            np.save(f"{CALIB_DIR}/recon_test/T_W1.npy", app.T_W1)
-            np.save(f"{CALIB_DIR}/recon_test/T_W2.npy", app.T_W2)
+            np.save(f"{data_path}/K.npy", app.K)
+            np.save(f"{data_path}/T_W1.npy", app.T_W1)
+            np.save(f"{data_path}/T_W2.npy", app.T_W2)
 
-    T_W1 = np.load(f"{CALIB_DIR}/recon_test/T_W1.npy")
-    T_W2 = np.load(f"{CALIB_DIR}/recon_test/T_W2.npy")
+    T_W1 = np.load(f"{data_path}/T_W1.npy")
+    T_W2 = np.load(f"{data_path}/T_W2.npy")
 
     # SECTION: load images
     print("Load image pair")
     file_names = sorted(os.listdir(f"{image_path}/left"))
     img_left = cv2.imread(f"{image_path}/left/{file_names[0]}")
     img_right = cv2.imread(f"{image_path}/right/{file_names[0]}")
-    concat_and_show(img_left, img_right)
+    if not automated:
+        concat_and_show(img_left, img_right)
 
     # SECTION: find keypoint correspondence by unique color
     kpts_left, kpts_right = np.zeros([2, colors.shape[0]]), np.zeros([2, colors.shape[0]])
+    remove_idcs = []  # remove certain points from pts_true, if no point correspondence was found
     for idx, color in enumerate(colors):
         thresh = 1.0e-6 * 255  # in simulation only required for rounding errors. can be very small
         color = np.flip(color) * 255  # OpenCV uses BGR instead of RGB
 
-        # for each color get a binary mask and its mass center as ...
-        # ... keypoint for the left image
-        mask = cv2.inRange(img_left, color - thresh, color + thresh)
-        M = cv2.moments(mask)
-        kp_left = (M["m10"] / M["m00"], M["m01"] / M["m00"])
-        # ... keypoint for the right image
-        mask = cv2.inRange(img_right, color - thresh, color + thresh)
-        M = cv2.moments(mask)
-        kp_right = (M["m10"] / M["m00"], M["m01"] / M["m00"])
+        # get a binary mask
+        mask_l = cv2.inRange(img_left, color - thresh, color + thresh)
+        mask_r = cv2.inRange(img_right, color - thresh, color + thresh)
+
+        # find the moments
+        M_l, M_r = cv2.moments(mask_l), cv2.moments(mask_r)
+        if M_l["m00"] == 0.0 or M_r["m00"] == 0.0:
+            remove_idcs.append(idx)
+            continue
+
+        # compute centers
+        kp_left = (M_l["m10"] / M_l["m00"], M_l["m01"] / M_l["m00"])
+        kp_right = (M_r["m10"] / M_r["m00"], M_r["m01"] / M_r["m00"])
 
         kpts_left[:, idx] = kp_left
         kpts_right[:, idx] = kp_right
 
+    # remove points if necessary
+    if remove_idcs:
+        print(f"WARNING: no correspondence found for points {remove_idcs}")
+        pts_true = np.delete(pts_true, remove_idcs, axis=0)
+        kpts_left = np.delete(kpts_left, remove_idcs, axis=1)
+        kpts_right = np.delete(kpts_right, remove_idcs, axis=1)
+
     # SECTION: reconstruct point cloud
-    K = np.load(f"{CALIB_DIR}/recon_test/K.npy")  # OpenCV camera matrix
+    K = np.load(f"{data_path}/K.npy")  # OpenCV camera matrix
     T_1W = np.linalg.inv(T_W1)  # transformation matrix from 3d world space to 3d cam 1 space
     T_2W = np.linalg.inv(T_W2)  # transformation matrix from 3d world space to 3d cam 2 space
     P1 = K @ T_1W[:3]  # projection matrix from 3d world space to cam 1 image space
@@ -112,14 +150,22 @@ def recon_test(image_path: str, generate_new=True):
     pts_recon = (pts_recon.T / pts_recon[:, 3]).T[:, :3]
 
     # SECTION: Presentation of reconstructed points and comparison with true points
-    error = np.sum((pts_recon - pts_true) ** 2, axis=1)
+    # the error is the quadratic distance between both point clouds
+    error = np.linalg.norm(pts_recon - pts_true, axis=1) ** 2
+    # error = np.sum((pts_recon - pts_true) ** 2, axis=1)
+    np.save(f"{data_path}/errors.npy", error)
+
     print(f"Max error distance: {np.max(error)}")
     print(f"Mean error distance: {np.mean(error)}")
     print(f"STD error distance: {np.std(error)}")
+    print(f"Summed error distance: {np.sum(error)}")
 
-    app = CloudApp(points=pts_recon, colors=colors, fullscreen=True)
-    app.run()
+    if not automated:
+        app = CloudApp(points=pts_recon, colors=colors, fullscreen=True)
+        app.run()
+
+    return error
 
 
 if __name__ == "__main__":
-    recon_test(image_path=f"{IMG_DIR}/recon_test", generate_new=True)
+    recon_test(folder_name=f"recon_test/demo", generate_new=True, automated=False, gen_rand=False)
