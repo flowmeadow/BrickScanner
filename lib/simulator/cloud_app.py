@@ -18,7 +18,6 @@ from glpg_flowmeadow.rendering.lighting.lights import Lights
 from glpg_flowmeadow.rendering.methods import draw_coordinates, draw_text_2D
 from glpg_flowmeadow.rendering.models.model import Model
 from glpg_flowmeadow.rendering.models.point_cloud import PointCloud
-from pyglet.gl import *
 from pyglet.window import key as gl_key
 
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -57,10 +56,10 @@ class CloudApp(GLScreen):
 
         # generate point cloud
         if colors is None:
-            self.colors = np.ones(self.points.shape)
+            self.colors = np.ones(points.shape)
         else:
             self.colors = colors
-        self.point_cloud = PointCloud(points, colors)
+        self.point_cloud = PointCloud(points, self.colors)
 
         # generate mesh object
         self.obj = None

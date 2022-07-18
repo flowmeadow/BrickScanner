@@ -12,6 +12,7 @@ import sys
 
 sys.path.append(os.getcwd())  # required to run script from console
 
+from lib.recon.triangulation import triangulate_points
 import cv2
 import numpy as np
 from definitions import *
@@ -82,7 +83,7 @@ def recon_test(
         app = TestReconApp(
             pts_true,
             colors,
-            file_path=image_path,
+            image_dir=image_path,
             automated=automated,
             fullscreen=True,
             gen_rand=gen_rand,
@@ -139,15 +140,7 @@ def recon_test(
 
     # SECTION: reconstruct point cloud
     K = np.load(f"{data_path}/K.npy")  # OpenCV camera matrix
-    T_1W = np.linalg.inv(T_W1)  # transformation matrix from 3d world space to 3d cam 1 space
-    T_2W = np.linalg.inv(T_W2)  # transformation matrix from 3d world space to 3d cam 2 space
-    P1 = K @ T_1W[:3]  # projection matrix from 3d world space to cam 1 image space
-    P2 = K @ T_2W[:3]  # projection matrix from 3d world space to cam 2 image space
-
-    # triangulate keypoints
-    pts_recon = cv2.triangulatePoints(P1, P2, kpts_left, kpts_right).T
-    # returns are homogeneous, so they need to be transformed back to 3D
-    pts_recon = (pts_recon.T / pts_recon[:, 3]).T[:, :3]
+    pts_recon = triangulate_points(kpts_left, kpts_right, K, K, T_W1, T_W2)
 
     # SECTION: Presentation of reconstructed points and comparison with true points
     # the error is the quadratic distance between both point clouds
