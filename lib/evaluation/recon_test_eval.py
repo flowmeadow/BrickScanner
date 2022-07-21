@@ -11,7 +11,7 @@ from typing import Tuple
 
 import numpy as np
 
-from scripts.recon_test_setup import recon_test
+from scripts.sim_recon_test import recon_test
 from definitions import *
 from matplotlib import pyplot as plt
 import seaborn as sns

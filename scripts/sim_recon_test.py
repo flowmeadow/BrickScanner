@@ -2,7 +2,7 @@
 # -*- encoding: utf-8 -*-
 """
 @Introduce : Script to test the 3d reconstruction from images generated with an OpenGL simulator
-@File      : recon_test_setup.py
+@File      : sim_recon_test.py
 @Project   : BrickScanner
 @Time      : 07.03.22 17:53
 @Author    : flowmeadow

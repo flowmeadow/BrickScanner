@@ -2,7 +2,7 @@
 # -*- encoding: utf-8 -*-
 """
 @Introduce : Script to reconstruct a virtual brick model from images generated with an OpenGL simulator
-@File      : recon_laser_setup.py
+@File      : sim_recon_setup.py
 @Project   : BrickScanner
 @Time      : 19.04.22 16:47
 @Author    : flowmeadow
