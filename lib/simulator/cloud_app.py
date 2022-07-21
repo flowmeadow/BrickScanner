@@ -33,12 +33,14 @@ class CloudApp(GLScreen):
         points: np.ndarray,
         colors: Optional[np.ndarray] = None,
         mesh: Optional[o3d.geometry.TriangleMesh] = None,
+        point_size: int = 8,
         **kwargs,
     ):
         """
         :param points: point cloud points (n, 3)
         :param colors: point cloud colors (n, 3) (Optional)
         :param mesh: Open3D mesh object (Optional)
+        :param point_size: Size of the points to render
         :param kwargs: forwarded keyword arguments
         """
         super().__init__(**kwargs)
@@ -59,7 +61,7 @@ class CloudApp(GLScreen):
             self.colors = np.ones(points.shape)
         else:
             self.colors = colors
-        self.point_cloud = PointCloud(points, self.colors)
+        self.point_cloud = PointCloud(points, self.colors, point_size=point_size)
 
         # generate mesh object
         self.obj = None

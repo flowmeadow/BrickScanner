@@ -24,7 +24,7 @@ void main()
     vec3 ambient_color  = 0.3  * fColor;
     vec3 final_color = vec3(0., 0., 0.);
     float laser_pos = 0.1;
-    float laser_intensity = 1.2 * max(0., 1. - pow(200 * (fPosition.y - laser_pos), 2));
+    float laser_intensity = max(0., 1. - pow(800 * (fPosition.y - laser_pos), 2));
 
     vec3 v = normalize(cameraPos - fPosition);
     vec3 n = normalize(fNormal);

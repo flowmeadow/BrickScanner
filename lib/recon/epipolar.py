@@ -24,5 +24,29 @@ def epipolar_distance(p_l: np.ndarray, p_r: np.ndarray, F: np.ndarray) -> float:
     return np.abs(p_l.T @ F @ p_r) / np.sqrt(a + b)
 
 
+def compute_F(T_W1: np.ndarray, T_W2: np.ndarray, K_1: np.ndarray, K_2: np.ndarray) -> np.ndarray:
+    """
+    Computes the fundamental matrix given two camera poses and camera matrices
+    (MVG page 244)
+    TODO reference
+    F = K_1^{-T} [t]_x R K^{-1} where R and t result from the transformation from camera 1 to camera 2
+    :param T_W1: Transformation matrix for cam 1 (4, 4)
+    :param T_W2: Transformation matrix for cam 2 (4, 4)
+    :param K_1: camera matrix for cam 1 (3, 3)
+    :param K_2: camera matrix for cam 2 (3, 3)
+    :return: Fundamental matrix (3, 3)
+    """
+    T_12 = np.linalg.inv(T_W1) @ T_W2  # transformation matrix from cam 1 to cam 2
+
+    t = T_12[:3, 3]  # translation
+    R = T_12[:3, :3]  # rotation
+    S = np.mat([[0, -t[2], t[1]], [t[2], 0, -t[0]], [-t[1], t[0], 0]])  # skew symmetric matrix [t]_x
+    E = S @ R  # essential matrix
+    K_1_inv = np.linalg.inv(K_1)  # camera matrix inverse 1
+    K_2_inv = np.linalg.inv(K_2)  # camera matrix inverse 1
+    F = K_2_inv.T * (E * K_1_inv)
+    return F
+
+
 if __name__ == "__main__":
     pass

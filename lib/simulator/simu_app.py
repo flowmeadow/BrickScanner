@@ -17,8 +17,6 @@ from glpg_flowmeadow.rendering.lighting.lights import Lights
 from glpg_flowmeadow.rendering.methods import draw_coordinates, draw_text_2D
 from glpg_flowmeadow.rendering.models.model import Model
 from glpg_flowmeadow.transformations.methods import construct_T, rot_mat, rotate_vec
-from lego.lego_bricks import load_from_id
-from lib.data_management import new_stereo_img_dir
 from lib.simulator.stereo_app import PoseCam, StereoApp
 from overrides import overrides
 from pyglet.window import key as gl_key
@@ -53,11 +51,10 @@ def construct_cam_transformation(distance: float = 1.0, alpha: float = 5.0, beta
 
 def prepare_mesh(mesh):
     """
-
+    TODO
     :param mesh:
     :return:
     """
-    # TODO
     mesh.scale(1 / 10, mesh.get_center())  # scale according to simulator
     mesh.translate(
         np.array(
@@ -212,29 +209,3 @@ class SimuStereoApp(StereoApp):
         :return: None
         """
         draw_text_2D(10, self.height - 10, f"{self.current_fps:.2f}")  # draw FPS
-
-
-if __name__ == "__main__":
-    # --- demo case to my_test class
-
-    # create world to cam transformations
-    dist, alpha, beta = 1.2, 2.0, 20.0
-    T_W1 = construct_cam_transformation(dist, alpha, beta)
-    T_W2 = construct_cam_transformation(dist, -alpha, beta)
-
-    # load and prepare mesh
-    mesh: o3d.geometry.TriangleMesh = load_from_id("314")
-    mesh.rotate(rot_mat((-1.0, 0.0, 0.0), 90))
-    mesh.rotate(rot_mat((0.0, 0.0, 1.0), 30))
-    mesh.translate(-mesh.get_center())
-    mesh.scale(0.1, mesh.get_center())
-    # create and run app
-    img_path = new_stereo_img_dir(prefix="laser_test")
-    app = SimuStereoApp(
-        T_W1,
-        T_W2,
-        mesh=mesh,
-        image_dir=img_path,
-        fullscreen=True,
-    )
-    app.run()

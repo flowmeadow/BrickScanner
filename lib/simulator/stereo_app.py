@@ -91,7 +91,7 @@ class StereoApp(GLScreen):
 
         def _save_frame(path):
             """saves current color buffer to path"""
-            print(f"Save image {path}")
+            print(f"\rSave image {path} ({self.image_count}|{self._max_images})", end="")
             get_buffer_manager().get_color_buffer().save(path)
             self._save_count += 1
 

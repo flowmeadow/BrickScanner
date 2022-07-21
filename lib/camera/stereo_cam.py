@@ -22,6 +22,8 @@ class StereoCam:
         self,
         idcs: Tuple[int, int] = (2, 0),
         name="StereoCam",
+        *args,
+        **kwargs,
     ):
         """
         :param idcs: system ID of the cameras
@@ -32,11 +34,12 @@ class StereoCam:
 
         # Initialize two camera objects
         print(f"Initialize {self._name}")
-        self._cam_1 = Cam(idcs[0])
-        self._cam_2 = Cam(idcs[1])
+        self._cam_1 = Cam(idcs[0], *args, **kwargs)
+        self._cam_2 = Cam(idcs[1], *args, **kwargs)
         self._cam_1.start()
         self._cam_2.start()
 
+        self._updated = False
         # wait until a frame from each cam was received
         self._frame_1 = None
         self._frame_2 = None
@@ -54,6 +57,7 @@ class StereoCam:
         f_2 = self._cam_2.read()
         if f_2 is not None:
             self._frame_2 = f_2
+        self._updated = f_1 is not None and f_2 is not None
 
     def read(self) -> Tuple[np.array, np.array]:
         """
@@ -62,6 +66,9 @@ class StereoCam:
         """
         self._update()
         return self._frame_1.copy(), self._frame_2.copy()
+
+    def updated(self):
+        return self._updated
 
     def __del__(self):
         """

@@ -11,6 +11,7 @@
 from copy import deepcopy
 from queue import Queue
 from threading import Thread
+from typing import Tuple
 
 import cv2 as cv
 import numpy as np
@@ -21,15 +22,17 @@ class Cam:
     Description: Threaded camera image capturing object
     """
 
-    _size = (1280, 720)  # default frame size
-
-    def __init__(self, cam_id: int, queue_size: int = 3):
+    def __init__(
+        self, cam_id: int, queue_size: int = 3, frame_rate: int = 5, resolution: Tuple[int, int] = (1280, 720)
+    ):
         """
         Based on: https://www.pyimagesearch.com/2017/02/06/faster-video-file-fps-with-cv2-videocapture-and-opencv/
         :param cam_id: system id of the desired camera
         :param queue_size: size of the image queue
         """
         self._cam_id = cam_id
+        self._frame_rate = frame_rate
+        self._resolution = resolution
         # if True, thread will be stopped
         self._stopped = False
         # initialize the queue used to store frames read from camera
@@ -101,8 +104,8 @@ class Cam:
         :return: camera object
         """
         camera = cv.VideoCapture(cam_id)
-        camera.set(cv.CAP_PROP_FRAME_WIDTH, self._size[0])
-        camera.set(cv.CAP_PROP_FRAME_HEIGHT, self._size[1])
+        camera.set(cv.CAP_PROP_FRAME_WIDTH, self._resolution[0])
+        camera.set(cv.CAP_PROP_FRAME_HEIGHT, self._resolution[1])
         # camera.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc("M", "J", "P", "G"))
-        camera.set(cv.CAP_PROP_FPS, 5)
+        camera.set(cv.CAP_PROP_FPS, self._frame_rate)
         return camera
