@@ -2,7 +2,7 @@
 # -*- encoding: utf-8 -*-
 """
 @Introduce : evaluate data from recon_test script
-@File      : recon_test_eval.py
+@File      : eval_sim_recon.py
 @Project   : BrickScanner
 @Time      : 16.07.22 18:14
 @Author    : flowmeadow
