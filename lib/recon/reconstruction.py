@@ -79,5 +79,5 @@ def reconstruct_point_cloud(
             point_cloud = pts_recon.copy()
         else:
             point_cloud = np.append(point_cloud, pts_recon, axis=0)
-
+    print(f"\nFinished reconstruction of {folder_name}")
     return data2cloud(point_cloud)

@@ -22,7 +22,6 @@ from overrides import overrides
 from pyglet.window import key as gl_key
 
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
-FOCUS_POINT = np.array([0.0, 0.1, 0.0])
 LASER_SHADER = f"{CURRENT_PATH}/shader/laser_line"
 
 
@@ -38,7 +37,6 @@ def construct_cam_transformation(distance: float = 1.0, alpha: float = 5.0, beta
     t = np.array([distance, 0.0, 0.0])
     t = rotate_vec(t, (0.0, 0.0, -1.0), alpha)
     t = rotate_vec(t, (0.0, -1.0, 0.0), beta)
-    t += FOCUS_POINT
 
     # compute rotation matrix
     R = rot_mat((0.0, -1.0, 0.0), 90)
@@ -47,25 +45,6 @@ def construct_cam_transformation(distance: float = 1.0, alpha: float = 5.0, beta
     R = rot_mat((0.0, -1.0, 0.0), beta) @ R
 
     return construct_T(R, t)
-
-
-def prepare_mesh(mesh):
-    """
-    TODO
-    :param mesh:
-    :return:
-    """
-    mesh.scale(1 / 10, mesh.get_center())  # scale according to simulator
-    mesh.translate(
-        np.array(
-            [
-                -mesh.get_center()[0],  # center on belt
-                -np.max(np.array(mesh.vertices)[:, 1]) + FOCUS_POINT[1] - 0.01,  # place close to laser
-                -np.min(np.array(mesh.vertices)[:, 2]),  # place on top of belt
-            ]
-        )
-    )
-    return mesh
 
 
 class SimuStereoApp(StereoApp):

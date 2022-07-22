@@ -126,6 +126,7 @@ class StereoApp(GLScreen):
 
         # close app if process is automated
         if self.image_count == self._max_images:
+            print("\nFinished image generation")
             # save camera matrix and camera poses
             self.K = get_K(get_P(), self.size)
             self.T_W1, self.T_W2 = self.cam_1.T, self.cam_2.T
