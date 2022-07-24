@@ -21,7 +21,6 @@ from lib.recon.triangulation import triangulate_points
 def reconstruct_point_cloud(
     folder_name: str,
     travel_dist: float = 0.5,
-    height_offset: float = 0.005,
     gap_window: int = 10,
     y_extension: float = 2.0,
 ) -> o3d.geometry.PointCloud:
@@ -29,7 +28,6 @@ def reconstruct_point_cloud(
     Reconstruct point cloud from images
     :param folder_name: folder name of the images, load from IMG_DIR
     :param travel_dist: distance the brick has moved on the belt
-    :param height_offset: minimum height (z value) reconstructed points must have to filter out points on the belt
     :param gap_window: defines a window for how many rows to delete around 'gap' rows
     :param y_extension: extents the search area in y direction (in pixel dimension)
     :return:
@@ -70,9 +68,6 @@ def reconstruct_point_cloud(
 
         # shift between each frame in y (belt) direction
         pts_recon[:, 1] -= img_idx * (travel_dist / len(img_names))
-
-        # remove points on belt
-        pts_recon = pts_recon[np.where(pts_recon[:, 2] > height_offset)[0], :]
 
         # add reconstructed point "slice" to point cloud
         if point_cloud is None:

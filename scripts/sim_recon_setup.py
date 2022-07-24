@@ -170,7 +170,6 @@ def double_side_recon(
     # reconstruct point cloud
     recon_kwargs = dict(
         travel_dist=travel_dist,
-        height_offset=height_offset,
         gap_window=gap_window,
         y_extension=y_extension,
     )
@@ -183,26 +182,29 @@ def double_side_recon(
 
 
 if __name__ == "__main__":
+    # TODO: add argparser
     # SETTINGS
-    folder_name = "test_laser"
+    folder_name = "sim_recon"
     brick_id = "314"
     settings = dict(
-        automated=False,
+        automated=True,
         generate_new=True,
         cam_dist=1.2,
         cam_alpha=10.0,
         cam_beta=45.0,
-        num_images=20,
+        num_images=50,
         height_offset=0.005,
         gap_window=10,
-        y_extension=2.0,
+        y_extension=1.0,
     )
 
     # generate mesh
     mesh = prepare_mesh(brick_id)
 
     # (create images and) reconstruct point cloud
-    pc = double_side_recon(folder_name, mesh, automated=False, generate_new=True)
+    pc = double_side_recon(folder_name, mesh, **settings)
+    # save point cloud
+    o3d.io.write_point_cloud(f"{DATA_DIR}/{folder_name}/recon_pc.pcd", pc)
 
     # compute cloud to mesh distance
     dist = m2c_dist_rough(mesh, pc)

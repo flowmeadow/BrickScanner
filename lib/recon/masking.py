@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 
 from lib.helper.image_operations import rotate_image
+from lib.recon.keypoints import find_hcenters
 
 
 def mask_from_ref(img: np.ndarray, ref: np.ndarray) -> np.ndarray:
@@ -71,6 +72,15 @@ def red_light_mask(img: np.ndarray, gap_window: int = 10, rotation_angle: Option
     mask_red2 = cv2.inRange(hsv, (160, 1, 0), (180, 255, 255))
     mask = (mask_red1 + mask_red2) / 255
 
+    # subtract a line from binary mask, representing the laser light projection on the belt
+    # TODO: currently first and last point is used.
+    #       better would be to compute the outer 2d points for 3d points on the belt
+    pts = np.round(find_hcenters(mask)).astype(np.uint)
+    p_1, p_2 = pts[0, :], pts[-1, :]
+    # TODO: might be inaccurate due to integer rounding
+    line_mask = cv2.line(np.zeros(mask.shape), p_1, p_2, 255, 3)
+    mask = np.clip(cv2.subtract(mask, line_mask), 0, 1.0)
+
     # for subpixel refinement, a dilation is performed to increase the region of interest
     kernel = np.ones((2, 2), np.uint8)
     mask = cv2.dilate(mask, kernel)
@@ -100,6 +110,8 @@ def red_light_mask(img: np.ndarray, gap_window: int = 10, rotation_angle: Option
     if rotation_angle:
         mask = rotate_image(mask, -rotation_angle)
 
+    # cv2.imshow("test", mask)
+    # cv2.waitKey()
     return mask
 
 
