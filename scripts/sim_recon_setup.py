@@ -187,7 +187,7 @@ if __name__ == "__main__":
     folder_name = "sim_recon"
 
     # brick settings
-    brick_id = "314"
+    brick_id = "3148"
     scale_factor = 0.1
 
     # recon settings

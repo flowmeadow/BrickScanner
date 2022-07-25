@@ -127,7 +127,7 @@ def align_point_clouds(
     return T_target
 
 
-def find_model(pc_source, debug_file: str = None, threshold=0.01):
+def find_model(pc_source, debug_file: str = None, threshold=0.1):
     """
     Given a source point cloud, search for a model that matches from the Ldraw library
     :param pc_source: source point cloud
