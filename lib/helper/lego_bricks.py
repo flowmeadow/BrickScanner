@@ -52,3 +52,8 @@ def load_random_stl(seed: int = None) -> o3d.geometry.TriangleMesh:
     stl_path = f"{STL_DIR}/{files[idx]}"
     mesh = o3d.io.read_triangle_mesh(stl_path)
     return mesh
+
+
+def get_base_bricks(path=STL_DIR):
+    files = [file for file in os.listdir(path) if file.endswith(".stl") and file[:-4].isnumeric()]
+    return files

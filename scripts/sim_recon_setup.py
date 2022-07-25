@@ -16,14 +16,16 @@ import numpy as np
 import open3d as o3d
 from definitions import *
 from glpg_flowmeadow.transformations.methods import rot_mat
-from lib.helper.cloud_operations import compute_dist_colors, m2c_dist_rough, data2cloud
+from lib.helper.cloud_operations import compute_dist_colors, data2cloud, m2c_dist_rough
 from lib.helper.lego_bricks import load_stl
 from lib.recon.reconstruction import reconstruct_point_cloud
 from lib.simulator.cloud_app import CloudApp
 from lib.simulator.simu_app import SimuStereoApp, construct_cam_transformation
 
 
-def prepare_mesh(brick_id: str, z_angle=45.0, random=False, seed: int = None) -> o3d.geometry.TriangleMesh:
+def prepare_mesh(
+    brick_id: str, z_angle=45.0, random=False, seed: int = None, scale_factor=1.0
+) -> o3d.geometry.TriangleMesh:
     """
     Prepare a brick model for reconstruction
     :param brick_id: brick id
@@ -31,6 +33,7 @@ def prepare_mesh(brick_id: str, z_angle=45.0, random=False, seed: int = None) ->
     :param z_angle: rotation angle around z axis in degrees
     :param random: if True, angle is generated randomly
     :param seed: set a seed for random number generation (Optional)
+    :param scale_factor: Scale model according to this
     """
     # load mesh
     mesh = load_stl(brick_id)
@@ -45,7 +48,7 @@ def prepare_mesh(brick_id: str, z_angle=45.0, random=False, seed: int = None) ->
     mesh.rotate(rot_mat((0.0, 0.0, 1.0), z_angle))
 
     # scale according to simulator dimension
-    mesh.scale(1 / 10, mesh.get_center())
+    mesh.scale(scale_factor, mesh.get_center())
 
     # shift mesh to be centered on belt
     mesh.translate(
@@ -122,7 +125,6 @@ def double_side_recon(
     cam_alpha=10.0,
     cam_beta=45.0,
     num_images=20,
-    height_offset=0.005,
     gap_window=10,
     y_extension=2.0,
 ):
@@ -135,8 +137,7 @@ def double_side_recon(
     :param cam_dist: distance from cam to focus point (for cam 1, scene 1; other poses are computed respectively)
     :param cam_alpha: rotation angle around z-axis in degree (for cam 1, scene 1; other poses are computed respectively)
     :param cam_beta: rotation angle around y-axis in degree (for cam 1, scene 1; other poses are computed respectively)
-    :param num_images: number of images to generate.
-    :param height_offset: minimum height (z value) reconstructed points must have to filter out points on the belt
+    :param num_images: number of images to generate
     :param gap_window: defines a window for how many rows to delete around 'gap' rows
     :param y_extension: extents the search area in y direction (in pixel dimension)
     :return:
@@ -183,9 +184,13 @@ def double_side_recon(
 
 if __name__ == "__main__":
     # TODO: add argparser
-    # SETTINGS
     folder_name = "sim_recon"
+
+    # brick settings
     brick_id = "314"
+    scale_factor = 0.1
+
+    # recon settings
     settings = dict(
         automated=True,
         generate_new=True,
@@ -193,18 +198,18 @@ if __name__ == "__main__":
         cam_alpha=10.0,
         cam_beta=45.0,
         num_images=50,
-        height_offset=0.005,
         gap_window=10,
         y_extension=1.0,
     )
 
     # generate mesh
-    mesh = prepare_mesh(brick_id)
+    mesh = prepare_mesh(brick_id, scale_factor=scale_factor)
 
     # (create images and) reconstruct point cloud
     pc = double_side_recon(folder_name, mesh, **settings)
-    # save point cloud
-    o3d.io.write_point_cloud(f"{DATA_DIR}/{folder_name}/recon_pc.pcd", pc)
+
+    # remove outlier
+    pc, _ = pc.remove_radius_outlier(nb_points=8, radius=0.01)
 
     # compute cloud to mesh distance
     dist = m2c_dist_rough(mesh, pc)
@@ -212,3 +217,7 @@ if __name__ == "__main__":
     # display reconstructed point cloud
     app = CloudApp(pc.points, compute_dist_colors(dist), mesh, fullscreen=True)
     app.run()
+
+    # rescale point cloud back to cm and save point cloud
+    pc.scale(1 / scale_factor, pc.get_center())
+    o3d.io.write_point_cloud(f"{DATA_DIR}/{folder_name}/recon_{brick_id}.pcd", pc)

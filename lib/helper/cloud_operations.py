@@ -8,11 +8,77 @@
 @Author    : flowmeadow
 """
 
-from typing import Dict
+from typing import Dict, List, Optional
 
 import numpy as np
 import open3d as o3d
 from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.colors as mcolors
+from matplotlib.colors import to_rgb
+
+
+def draw_point_clouds(*clouds: List[o3d.geometry.PointCloud], colors: Optional[np.ndarray] = None):
+    """
+    renders two given point clouds and coordinate axes
+    :param clouds: list of point clouds
+    :param colors: RGB float ([0., 1.]) color array for n point clouds (n, 3) (Optional)
+    """
+    # define color array
+    if colors is None:
+        colors = np.array([to_rgb(c) for c in list(mcolors.TABLEAU_COLORS.values())])
+
+    # compute point cloud normals and assign a color
+    for idx, cloud in enumerate(clouds):
+        if not isinstance(cloud, o3d.geometry.PointCloud):
+            raise TypeError("clouds must contain only of point cloud objects")
+        cloud.estimate_normals()
+        cloud.paint_uniform_color(colors[idx])
+
+    # create coordinate axes frame
+    coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame()
+
+    # draw scene
+    o3d.visualization.draw_geometries([*clouds, coord_frame], left=1000)
+
+
+def cloud2cloud_err(pc_source: o3d.geometry.PointCloud, pc_target: o3d.geometry.PointCloud) -> float:
+    """
+    Returns the quadratic and summed distances between each point of source, to the closest point of target
+    :param pc_source: source point cloud
+    :param pc_target: target point cloud
+    :return: error
+    """
+    dists = np.array(pc_source.compute_point_cloud_distance(pc_target))
+    return np.sum(dists ** 2)
+
+
+def rotate_random(pc: o3d.geometry.PointCloud, center=np.zeros(3)):
+    """
+    Rotates point cloud around a random axis with a random angle
+    :param pc: point cloud object
+    :param center: rotation center (Default: origin)
+    :return: point cloud object
+    """
+    angle = np.random.rand() * np.pi * 2
+    axis = np.random.random(3)
+    axis /= np.linalg.norm(axis)
+    pc.rotate(pc.get_rotation_matrix_from_axis_angle(angle * axis), center=center)
+    return pc
+
+
+def construct_T(R: np.ndarray = None, t: np.ndarray = None) -> np.ndarray:
+    """
+    Combines rotation matrix and translation vector to transformation matrix
+    :param R: array (3, 3)
+    :param t: array (3,)
+    :return: array (4, 4)
+    """
+    T = np.eye(4)
+    if R is not None:
+        T[:3, :3] = R
+    if t is not None:
+        T[:3, -1] = t
+    return T
 
 
 def mdim_dot(a: np.ndarray, b: np.ndarray) -> np.ndarray:

@@ -14,17 +14,50 @@ import numpy as np
 import open3d as o3d
 
 
-def compute_obb_edges(pc: o3d.geometry.PointCloud) -> np.ndarray:
+def find_closest_obb_edges(source_edges, target_edges_array, thresh=0.01):
+    """
+    takes the summed quadratic distance between edge lengths as error. Returns an indices array
+    containing the positions of errors below the threshold, sorted by their value
+    :param source_edges: array (3,)
+    :param target_edges_array: array (n, 3)
+    :param thresh: maximum allowed error
+    :return: indices array (m, 3); m <= n
+    """
+    err = (target_edges_array - source_edges) ** 2
+    err = np.sum(err, axis=1)
+    thresh_idcs = np.argwhere(err <= thresh)
+    return thresh_idcs[np.argsort(err[thresh_idcs].flatten())].flatten()
+
+
+def compute_obb_edges(geometry: Union[o3d.geometry.PointCloud, o3d.geometry.TriangleMesh]) -> np.ndarray:
     """
     Computes the bounding box edges relative to world axes of given point cloud
-    :param pc: point cloud object
+    :param geometry: point cloud object or triangle mesh object
     :return: sorted array of edges from smallest to largest (3,)
     """
-    pts = np.array(pc.points)
+    if isinstance(geometry, o3d.geometry.PointCloud):
+        pts = np.array(geometry.points)
+    elif isinstance(geometry, o3d.geometry.TriangleMesh):
+        pts = np.array(geometry.vertices)
+    else:
+        raise NotImplementedError("Only triangle mesh and point cloud objects are allowed")
     bb_min = np.min(pts, axis=0)
     bb_max = np.max(pts, axis=0)
     extents = bb_max - bb_min
     return np.sort(extents)
+
+
+def compute_obb_center(pc: o3d.geometry.PointCloud) -> float:
+    """
+    Computes the bounding box center relative to world axes of given point cloud
+    :param pc: point cloud object
+    :return: obb volume
+    """
+    pts = np.array(pc.points)
+    bb_min = np.min(pts, axis=0)
+    bb_max = np.max(pts, axis=0)
+    center = bb_min + (bb_max - bb_min) / 2
+    return center
 
 
 def compute_obb_volume(pc: o3d.geometry.PointCloud) -> float:
@@ -104,7 +137,8 @@ def PCA_based_alignment(pc, get_R=False) -> Union[o3d.geometry.PointCloud, Tuple
     _, eigen_vecs = np.linalg.eigh(cov_mat)
     eigen_vecs /= np.linalg.norm(eigen_vecs, axis=0)
     R = eigen_vecs.T
-    pc.rotate(R)
+
+    pc.rotate(R, center=np.zeros(3))
     if get_R:
         return pc, R
     else:

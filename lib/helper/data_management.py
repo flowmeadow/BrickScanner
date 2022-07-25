@@ -8,12 +8,16 @@
 @Author    : flowmeadow
 """
 import json
+import pickle
 from datetime import datetime
 from typing import Optional
 
 import cv2
 import numpy as np
+import pandas as pd
+
 from definitions import *
+from lib.helper.lego_bricks import get_base_bricks
 
 
 def params_from_json(path):
@@ -72,3 +76,22 @@ def append_img_pair(path: str, img_l: np.array, img_r: np.array):
     file_name = f"{base}{str(idx).zfill(3)}.{ext}"
     cv2.imwrite(f"{path}/left/{file_name}", img_l)
     cv2.imwrite(f"{path}/right/{file_name}", img_r)
+
+
+def save_base_obb_data(file_path: str, out_dir: str = DATA_DIR):
+    """
+    Saves the mean OBB edges and volumes for all base bricks in a pickle file
+    :param file_path: file path of the csv file
+    :param out_dir: directory to store the pickle file
+    """
+    obb_data = {}
+    df = pd.read_csv(file_path, index_col=0)
+    df = df.loc[df["model"].isin(get_base_bricks())]
+    df_e = df["pca_based_extents_mean"]
+    df_e = df_e.apply(lambda x: np.fromstring(x.replace("[", "").replace("]", ""), sep=" "))
+    target_edges = np.stack(np.array(df_e))
+    obb_data["edges"] = target_edges
+    obb_data["volumes"] = np.array(df["pca_based_volume_mean"])
+    obb_data["file_names"] = list(df["model"])
+    with open(f"{out_dir}/base_obb_data.pkl", "wb") as f:
+        pickle.dump(obb_data, f)
