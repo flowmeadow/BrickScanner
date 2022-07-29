@@ -7,6 +7,7 @@
 @Time      : 19.04.22 16:47
 @Author    : flowmeadow
 """
+import copy
 import os
 import sys
 
@@ -24,23 +25,21 @@ from lib.simulator.simu_app import SimuStereoApp, construct_cam_transformation
 
 
 def prepare_mesh(
-    brick_id: str, z_angle=45.0, random=False, seed: int = None, scale_factor=1.0
+    mesh: o3d.geometry.TriangleMesh, z_angle=45.0, random=False, seed: int = None, scale_factor=1.0
 ) -> o3d.geometry.TriangleMesh:
     """
     Prepare a brick model for reconstruction
-    :param brick_id: brick id
+    :param mesh: triangle mesh
     :return: triangle mesh
     :param z_angle: rotation angle around z axis in degrees
     :param random: if True, angle is generated randomly
     :param seed: set a seed for random number generation (Optional)
     :param scale_factor: Scale model according to this
     """
-    # load mesh
-    mesh = load_stl(brick_id)
+    mesh = copy.deepcopy(mesh)
 
     # TODO: rotate mesh according to its longest side, so it lies flat on belt
     mesh.rotate(rot_mat((-1.0, 0.0, 0.0), 90))
-
     # rotate around z-axis
     if seed:
         np.random.seed(seed)
@@ -69,8 +68,7 @@ def generate_images(
     T_W1: np.ndarray = None,
     T_W2: np.ndarray = None,
     automated=False,
-    num_images=20,
-    travel_dist=0.5,
+    step: float = 0.01,
 ) -> o3d.geometry.PointCloud:
     """
     Generates images of a virtual brick model
@@ -79,8 +77,7 @@ def generate_images(
     :param T_W1: pose of camera 1 (4, 4)
     :param T_W2: pose of camera 2 (4, 4)
     :param automated: if True, image generation is running automatically
-    :param num_images: number of images to render for each cam
-    :param travel_dist: the distance the model has to travel in y direction during image generation
+    :param step: shift in y direction between each frame in simulator dimensions (e.g. 0.01 -> 1mm)
     """
     # create directories
     data_dir = f"{DATA_DIR}/{folder_name}"
@@ -102,8 +99,7 @@ def generate_images(
         T_W2,
         mesh,
         image_dir=img_dir,
-        max_images=num_images,
-        travel_dist=travel_dist,
+        step=step,
         automated=automated,
         fullscreen=True,
     )
@@ -124,7 +120,7 @@ def double_side_recon(
     cam_dist=1.2,
     cam_alpha=10.0,
     cam_beta=45.0,
-    num_images=20,
+    step=0.01,
     gap_window=10,
     y_extension=2.0,
 ):
@@ -137,16 +133,13 @@ def double_side_recon(
     :param cam_dist: distance from cam to focus point (for cam 1, scene 1; other poses are computed respectively)
     :param cam_alpha: rotation angle around z-axis in degree (for cam 1, scene 1; other poses are computed respectively)
     :param cam_beta: rotation angle around y-axis in degree (for cam 1, scene 1; other poses are computed respectively)
-    :param num_images: number of images to generate
+    :param step: shift in y direction between each frame in simulator dimensions (e.g. 0.01 -> 1mm)
     :param gap_window: defines a window for how many rows to delete around 'gap' rows
     :param y_extension: extents the search area in y direction (in pixel dimension)
     :return:
     """
     folder_1 = f"{folder_name}/view_1"
     folder_2 = f"{folder_name}/view_2"
-
-    y_coords = np.array(mesh.vertices)[:, 1]
-    travel_dist = np.max(y_coords) - np.min(y_coords)
 
     if generate_new:
         # prepare camera poses ...
@@ -161,8 +154,7 @@ def double_side_recon(
 
         # generate images
         gen_kwargs = dict(
-            num_images=num_images,
-            travel_dist=travel_dist,
+            step=step,
             automated=automated,
         )
         generate_images(folder_1, mesh, *poses_1, **gen_kwargs)
@@ -170,7 +162,7 @@ def double_side_recon(
 
     # reconstruct point cloud
     recon_kwargs = dict(
-        travel_dist=travel_dist,
+        step=step,
         gap_window=gap_window,
         y_extension=y_extension,
     )
@@ -185,6 +177,8 @@ def double_side_recon(
 if __name__ == "__main__":
     # TODO: add argparser
     folder_name = "sim_recon"
+    folder_1 = f"{folder_name}/view_1"
+    folder_2 = f"{folder_name}/view_2"
 
     # brick settings
     brick_id = "3148"
@@ -192,18 +186,19 @@ if __name__ == "__main__":
 
     # recon settings
     settings = dict(
-        automated=True,
-        generate_new=True,
+        automated=False,
+        generate_new=False,
         cam_dist=1.2,
         cam_alpha=10.0,
         cam_beta=45.0,
-        num_images=50,
-        gap_window=10,
+        gap_window=0,
         y_extension=1.0,
+        step=0.05,
     )
 
     # generate mesh
-    mesh = prepare_mesh(brick_id, scale_factor=scale_factor)
+    mesh = load_stl(brick_id)
+    mesh = prepare_mesh(mesh, scale_factor=scale_factor)
 
     # (create images and) reconstruct point cloud
     pc = double_side_recon(folder_name, mesh, **settings)

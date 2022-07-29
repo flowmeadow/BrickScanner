@@ -66,20 +66,24 @@ class SimuStereoApp(StereoApp):
         T_W1: np.ndarray,
         T_W2: np.ndarray,
         mesh: o3d.geometry.TriangleMesh,
-        max_images: int = 10,
-        travel_dist=0.5,
+        step: float = 0.01,
         **kwargs,
     ):
         """
         :param T_W1: Transformation matrix from world space to camera space 1
         :param T_W2: Transformation matrix from camera space 1 to camera space 2
         :param mesh: Open3D triangle mesh of a brick to scan
-        :param image_dir: file_path to store the images
-        :param max_images: number of images to generate.
+        :param step: shift in y direction between each frame in simulator dimensions (e.g. 0.01 -> 1mm)
         :param kwargs: forwarded keyword arguments
         """
+
+        # compute number of required images
+        self.step = step
+        y_coords = np.array(mesh.vertices)[:, 1]
+        self.y_dist = np.max(y_coords) - np.min(y_coords)
+        self.y_dist += 2 * self.step
+        max_images = int(self.y_dist / self.step)
         super().__init__(max_images=max_images, **kwargs)
-        # store attributes
 
         # initialize cameras
         self.cam_fly = FlyMotion(self, camera_pos=(1.0, 1.0, 1.0), camera_view=(-1.0, -1.0, -1.0))
@@ -99,7 +103,6 @@ class SimuStereoApp(StereoApp):
         )
 
         # add brick
-        self.dist = travel_dist
         self.brick = Model(
             vertices=np.array(mesh.vertices),
             indices=np.array(mesh.triangles),
@@ -160,12 +163,15 @@ class SimuStereoApp(StereoApp):
         """
         if self._sim:
             d = 0.001
-            self._path_distance += d
-            if self._path_distance > self.dist:
-                self._path_distance = 0
-                self._sim = False
+            if self._path_distance > self.y_dist / 2.2:
+                # self._path_distance = 0
+                # self._sim = False
+                pass
+            else:
+                self._path_distance += d
+
         else:
-            d = self.dist / self._max_images  # shift distance
+            d = self.step  # shift distance
             self._path_distance = d * self.image_count
         self.brick.translate(*(0.0, self._path_distance, 0.0))  # translate brick
 

@@ -30,6 +30,23 @@ def get_intersect(a1, a2, b1, b2):
     return np.array([x / z, y / z])
 
 
+def get_line_points(P, img_shape):
+    """
+    Given a world to image projection matrix, the upper and lower position of the laser is returned in image coordinates
+    :param P:
+    :param img_shape:
+    :return:
+    """
+    h, w = img_shape
+    l_1 = P @ np.array([10., 0., 0., 1.])
+    l_2 = P @ np.array([-10., 0., 0., 1.])
+    l_1 = (l_1[:-1] / l_1[-1])
+    l_2 = (l_2[:-1] / l_2[-1])
+    p_1 = get_intersect(l_1, l_2, np.array([0, 0]), np.array([w, 0])).astype(np.int)
+    p_2 = get_intersect(l_1, l_2, np.array([0, h]), np.array([w, h])).astype(np.int)
+    return p_1, p_2
+
+
 def find_hcenters(mask: np.ndarray) -> np.ndarray:
     """
     Find the horizontal centers for each line in a grayscale image. This is based on the 'center of mass' computation,
@@ -100,10 +117,10 @@ def point_from_epiline(lines: np.ndarray, key_pts: np.ndarray, y_extension: floa
 
 
 def find_keypoint_pairs(
-    kpts_1: np.ndarray,
-    kpts_2: np.ndarray,
-    F: np.ndarray,
-    y_extension: float = 2.0,
+        kpts_1: np.ndarray,
+        kpts_2: np.ndarray,
+        F: np.ndarray,
+        y_extension: float = 2.0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
 

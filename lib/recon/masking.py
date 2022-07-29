@@ -7,13 +7,11 @@
 @Time      : 29.03.22 17:55
 @Author    : flowmeadow
 """
-from typing import Optional
+from typing import Optional, Tuple
 
 import cv2
 import numpy as np
-
 from lib.helper.image_operations import rotate_image
-from lib.recon.keypoints import find_hcenters
 
 
 def mask_from_ref(img: np.ndarray, ref: np.ndarray) -> np.ndarray:
@@ -54,10 +52,13 @@ def mask_segments(img: np.ndarray, ref: np.ndarray) -> np.ndarray:
     return mask
 
 
-def red_light_mask(img: np.ndarray, gap_window: int = 10, rotation_angle: Optional[float] = None) -> np.ndarray:
+def red_light_mask(
+    img: np.ndarray, line: Tuple[np.ndarray, np.ndarray], gap_window: int = 10, rotation_angle: Optional[float] = None
+) -> np.ndarray:
     """
     Generate weighted mask for area of red laser line. Used in simulation
     :param img: BGR image (h, w, 3)
+    :param line: positions of the laser line on the belt at the upper and lower image edge 2 x (2,)
     :param gap_window: defines a window for how many rows to delete around 'gap' rows
     :param rotation_angle: rotate image before masking (Optional)
     :return: grayscale mask (h, w)
@@ -73,12 +74,8 @@ def red_light_mask(img: np.ndarray, gap_window: int = 10, rotation_angle: Option
     mask = (mask_red1 + mask_red2) / 255
 
     # subtract a line from binary mask, representing the laser light projection on the belt
-    # TODO: currently first and last point is used.
-    #       better would be to compute the outer 2d points for 3d points on the belt
-    pts = np.round(find_hcenters(mask)).astype(np.uint)
-    p_1, p_2 = pts[0, :], pts[-1, :]
     # TODO: might be inaccurate due to integer rounding
-    line_mask = cv2.line(np.zeros(mask.shape), p_1, p_2, 255, 3)
+    line_mask = cv2.line(np.zeros(mask.shape), *line, 255, 3)
     mask = np.clip(cv2.subtract(mask, line_mask), 0, 1.0)
 
     # for subpixel refinement, a dilation is performed to increase the region of interest

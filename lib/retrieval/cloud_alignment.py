@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 """
-@Introduce : TODO
+@Introduce : Contains methods for point cloud alignment and model search
 @File      : cloud_alignment.py
 @Project   : BrickScanner
 @Time      : 20.06.22 17:48
@@ -127,7 +127,7 @@ def align_point_clouds(
     return T_target
 
 
-def find_model(pc_source, debug_file: str = None, threshold=0.1):
+def find_model(pc_source, debug_file: str = None, threshold=0.1, max_best: int = None):
     """
     Given a source point cloud, search for a model that matches from the Ldraw library
     :param pc_source: source point cloud
@@ -144,8 +144,8 @@ def find_model(pc_source, debug_file: str = None, threshold=0.1):
         obb_data = pickle.load(f)
 
     # preselect models that have a PCA aligned OBB similar to source point cloud
-    idcs = find_closest_obb_edges(compute_obb_edges(pc_source), obb_data["edges"], thresh=threshold)
-    files = np.array(obb_data["file_names"])[idcs]
+    idcs = find_closest_obb_edges(compute_obb_edges(pc_source), obb_data["edges"], thresh=threshold, max_best=max_best)
+    files = np.array(obb_data["files"])[idcs]
     print(f"Found {len(files)} files that have an obb edge error lower than {threshold}")
     if debug_file:
         print(f"Original file {debug_file} is {'' if debug_file in files else 'NOT'} in file selection")
@@ -158,22 +158,26 @@ def find_model(pc_source, debug_file: str = None, threshold=0.1):
 
         # convert model to point cloud
         mesh = o3d.io.read_triangle_mesh(f"{STL_DIR}/{file}")
-        pc_target: o3d.geometry.PointCloud = mesh.sample_points_uniformly(100_000)
+        pc_target: o3d.geometry.PointCloud = mesh.sample_points_uniformly(10_000)
 
         # compute best alignment transformation
         T_target = align_point_clouds(pc_source, pc_target, debug=debug)
         pc_target.transform(T_target)
 
         # compute mismatch between clouds
-        err = cloud2cloud_err(pc_source, pc_target)
+        err = cloud2cloud_err(pc_source, pc_target, method=np.sum)
 
-        print(f"Alignment for file {file} returned an error of {err:.4f}")
+        print(f"\rAlignment for file {file} returned an error of {err:.4f}", end="")
         errors.append(err)
         transformations.append(T_target)
-
     errors = np.array(errors)
     # compute a probability estimate for each file
     percentages = 100 * (1 / errors) / np.sum(1 / errors)
+
+    if len(files) > 0:
+        top_idx = np.argsort(errors).flatten()[0]
+        print(f"\rBest guess is {files[top_idx]} with error {errors[top_idx]} and probability {percentages[top_idx]}")
+
     return files, errors, transformations, percentages
 
 

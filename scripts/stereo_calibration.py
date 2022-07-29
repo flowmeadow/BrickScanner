@@ -18,7 +18,7 @@ import cv2
 import numpy as np
 from definitions import *
 from lib.camera.stereo_cam import StereoCam
-from lib.data_management import append_img_pair, new_stereo_img_dir
+from lib.helper.data_management import append_img_pair, new_stereo_img_dir
 
 CRITERIA = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.0001)
 
@@ -90,12 +90,13 @@ def calibrate_stereo_setup(
         # create image directory
         image_path = new_stereo_img_dir(suffix="calib")
 
-        cam = StereoCam()
+        cam = StereoCam(frame_rate=30, resolution=(320, 240))
 
         print("Start main loop")
         while True:
             # Capture frame-by-frame
             frame_1, frame_2 = cam.read()
+            frame_2 = cv2.rotate(frame_2, cv2.ROTATE_180)  # rotate second frame about 180°
 
             key = cv2.waitKey(1)
             if key & 0xFF == ord("q"):
@@ -144,7 +145,7 @@ def calibrate_stereo_setup(
             else:
                 print(f"Warning: No checkerboard found in {file_name}")
 
-    print("Start calibration? (y/n)")
+    print("Start data? (y/n)")
     inp = input(">> ")
     if inp != "y":
         return
@@ -169,7 +170,7 @@ def calibrate_stereo_setup(
     )
     print("Error:", ret)
 
-    print("Save calibration data? (y/n)")
+    print("Save data data? (y/n)")
     inp = input(">> ")
     if inp != "y":
         return
@@ -184,7 +185,7 @@ def calibrate_stereo_setup(
 
 
 if __name__ == "__main__":
-    cell_width = 11.97
+    cell_width = 5.78
     c_size = (6, 8)
     # img_path = f"{IMG_DIR}/220322-002703_calib"
     img_path = None

@@ -8,7 +8,7 @@
 @Author    : flowmeadow
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable
 
 import numpy as np
 import open3d as o3d
@@ -41,7 +41,9 @@ def draw_point_clouds(*clouds: List[o3d.geometry.PointCloud], colors: Optional[n
     o3d.visualization.draw_geometries([*clouds, coord_frame], left=1000)
 
 
-def cloud2cloud_err(pc_source: o3d.geometry.PointCloud, pc_target: o3d.geometry.PointCloud) -> float:
+def cloud2cloud_err(
+    pc_source: o3d.geometry.PointCloud, pc_target: o3d.geometry.PointCloud, method: Callable = np.sum
+) -> float:
     """
     Returns the quadratic and summed distances between each point of source, to the closest point of target
     :param pc_source: source point cloud
@@ -49,7 +51,7 @@ def cloud2cloud_err(pc_source: o3d.geometry.PointCloud, pc_target: o3d.geometry.
     :return: error
     """
     dists = np.array(pc_source.compute_point_cloud_distance(pc_target))
-    return np.sum(dists ** 2)
+    return method(dists ** 2)
 
 
 def rotate_random(pc: o3d.geometry.PointCloud, center=np.zeros(3)):

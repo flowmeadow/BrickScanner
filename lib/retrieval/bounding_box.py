@@ -14,7 +14,7 @@ import numpy as np
 import open3d as o3d
 
 
-def find_closest_obb_edges(source_edges, target_edges_array, thresh=0.01):
+def find_closest_obb_edges(source_edges, target_edges_array, thresh=0.01, max_best: int = None):
     """
     takes the summed quadratic distance between edge lengths as error. Returns an indices array
     containing the positions of errors below the threshold, sorted by their value
@@ -23,10 +23,20 @@ def find_closest_obb_edges(source_edges, target_edges_array, thresh=0.01):
     :param thresh: maximum allowed error
     :return: indices array (m, 3); m <= n
     """
-    err = (target_edges_array - source_edges) ** 2
+    # volume error
+    # target_v_array = np.prod(target_edges_array, axis=1)
+    # source_v = np.prod(source_edges)
+    # err = np.abs(target_v_array / source_v - 1.0) ** 2
+
+    err = (target_edges_array / source_edges - 1.0) ** 2
     err = np.sum(err, axis=1)
+
     thresh_idcs = np.argwhere(err <= thresh)
-    return thresh_idcs[np.argsort(err[thresh_idcs].flatten())].flatten()
+    idcs = thresh_idcs[np.argsort(err[thresh_idcs].flatten())].flatten()
+
+    if max_best and len(idcs) > max_best:
+        idcs = idcs[:max_best]
+    return idcs
 
 
 def compute_obb_edges(geometry: Union[o3d.geometry.PointCloud, o3d.geometry.TriangleMesh]) -> np.ndarray:

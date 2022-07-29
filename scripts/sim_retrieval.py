@@ -14,7 +14,7 @@ from definitions import *
 
 if __name__ == "__main__":
     folder_name = "sim_recon"
-    debug = False
+    debug = True
 
     # get brick id
     prefix = "recon_"
