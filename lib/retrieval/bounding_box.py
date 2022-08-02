@@ -12,6 +12,8 @@ from typing import Tuple, Union
 
 import numpy as np
 import open3d as o3d
+from glpg_flowmeadow.transformations.methods import rotate_vec
+from scipy.spatial import ConvexHull
 
 
 def find_closest_obb_edges(source_edges, target_edges_array, thresh=0.01, max_best: int = None):
@@ -133,21 +135,91 @@ def iterative_alignment(
     return pc
 
 
-def PCA_based_alignment(pc, get_R=False) -> Union[o3d.geometry.PointCloud, Tuple[o3d.geometry.PointCloud, np.ndarray]]:
+def PCA_based_alignment(
+    pc: o3d.geometry.PointCloud,
+    method="all",
+    get_R=False,
+) -> Union[o3d.geometry.PointCloud, Tuple[o3d.geometry.PointCloud, np.ndarray]]:
     """
     PCA based approach to rotate the given pointcloud such that the bounding box relative
     to world axes matches PCA axes
     :param pc: point cloud object
+    :param method: Select a method for PCA alignment ('all' by default)
     :param get_R: if True, return rotation matrix as well
     :return: point cloud object or (point cloud object, rotation matrix (3, 3))
     """
     pc = copy.deepcopy(pc)
     pts = np.array(pc.points)
+
+    # find the eigenvectors of the covariance matrix
     cov_mat = np.cov(pts, y=None, rowvar=0, bias=1)
     _, eigen_vecs = np.linalg.eigh(cov_mat)
     eigen_vecs /= np.linalg.norm(eigen_vecs, axis=0)
-    R = eigen_vecs.T
 
+    # select eigenvector for projection in 'min/max' case, return rotation matrix for 'all' case otherwise
+    R, n = None, None
+    method = method.lower()
+    if method == "min":
+        n = eigen_vecs[:, -1]
+    elif method == "max":
+        n = eigen_vecs[:, 0]
+    elif method == "all":
+        R = eigen_vecs.T
+    else:
+        raise NotImplementedError("Only 'all', 'max' and 'min' are implemented methods")
+
+    # compute rotation matrix for min/max case
+    if method in ["min", "max"]:
+        # project points to the plane defined by n
+        dists = np.dot(pts, n)
+        pts_proj = pts - np.matmul(dists.reshape(-1, 1), n.reshape(1, -1))
+
+        # rotate all points, such that n aligns with z axis; all points lie in the xy plane afterwards
+        init_angle = 180 * np.arccos(np.dot(n, np.array([0.0, 0.0, 1.0]))) / np.pi
+        init_axis = np.cross(n, np.array([0.0, 0.0, 1.0]))
+        pts_proj = rotate_vec(pts_proj, init_axis, init_angle)
+
+        # compute convex hull points; by default they are in counterclockwise order
+        hull = ConvexHull(pts_proj[:, :2])  # third dimension has been removed
+        pts_hull = hull.points[hull.vertices]
+
+        # align each edge of the convex hull with the x-axis and compute the bounding box volume
+        min_e, min_V = None, np.inf
+        for idx in range(pts_hull.shape[0]):
+            # get normalized edge
+            edge = pts_hull[idx] - pts_hull[(idx + 1) % pts_hull.shape[0]]
+            edge /= np.linalg.norm(edge)
+
+            # find the angle between edge and x-axis
+            angle = -np.arctan(edge[1] / edge[0])
+
+            # rotate all points, such that the edge flush with the x-axis
+            px, py = pts[:, 0], pts[:, 1]
+            qx = np.cos(angle) * px - np.sin(angle) * py
+            qy = np.sin(angle) * px + np.cos(angle) * py
+            pts_rot = np.stack([qx, qy]).T
+
+            # compute the axis aligned OBB volume
+            bb_min = np.min(pts_rot[:, :2], axis=0)
+            bb_max = np.max(pts_rot[:, :2], axis=0)
+            volume = np.prod(bb_max - bb_min)
+
+            # save the optimal edge
+            if volume < min_V:
+                min_V, min_e = volume, edge
+
+        # rotate optimal edge back to 3d space
+        e = np.zeros(3) + min_e
+        e = rotate_vec(e.T, init_axis, -init_angle)
+
+        # compute cross_product between n and e to obtain the third axis
+        c = np.cross(e, n)
+
+        # build rotation matrix
+        # TODO: order important here?
+        R = np.stack([n, e, c])
+
+    # rotate point cloud accordingly and return rotation matrix if desired
     pc.rotate(R, center=np.zeros(3))
     if get_R:
         return pc, R
