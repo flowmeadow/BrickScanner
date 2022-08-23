@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 """
-@Introduce : Builds a stereo cam setup focusing a brick on a belt
+@Introduce : Builds a stereo cam real_setup focusing a brick on a belt
 @File      : simu_app.py
 @Project   : BrickScanner
 @Time      : 19.04.22 16:49
@@ -49,7 +49,7 @@ def construct_cam_transformation(distance: float = 1.0, alpha: float = 5.0, beta
 
 class SimuStereoApp(StereoApp):
     """
-    Builds a stereo cam setup focusing a brick on a belt. This is used to take pictures while the
+    Builds a stereo cam real_setup focusing a brick on a belt. This is used to take pictures while the
     brick crosses a laser line on the belt. Unit length 1 represents 100mm or 10cm
           - Move the camera with ASDF and Mouse
           - Switch between cameras with 1, 2 and 3

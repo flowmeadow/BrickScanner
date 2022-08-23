@@ -17,7 +17,7 @@ import matplotlib.colors as mcolors
 from matplotlib.colors import to_rgb
 
 
-def draw_point_clouds(*clouds: List[o3d.geometry.PointCloud], colors: Optional[np.ndarray] = None):
+def draw_point_clouds(*clouds: List[o3d.geometry.PointCloud], colors: Optional[np.ndarray] = None, coord_axes=True):
     """
     renders two given point clouds and coordinate axes
     :param clouds: list of point clouds
@@ -35,14 +35,15 @@ def draw_point_clouds(*clouds: List[o3d.geometry.PointCloud], colors: Optional[n
         cloud.paint_uniform_color(colors[idx])
 
     # create coordinate axes frame
-    coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame()
-
+    if coord_axes:
+        coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame()
+        clouds = [*clouds, coord_frame]
     # draw scene
-    o3d.visualization.draw_geometries([*clouds, coord_frame], left=1000)
+    o3d.visualization.draw_geometries(clouds, left=1000, width=800, height=800)
 
 
 def cloud2cloud_err(
-    pc_source: o3d.geometry.PointCloud, pc_target: o3d.geometry.PointCloud, method: Callable = np.sum
+    pc_source: o3d.geometry.PointCloud, pc_target: o3d.geometry.PointCloud, method: Callable = np.mean, thresh=0
 ) -> float:
     """
     Returns the quadratic and summed distances between each point of source, to the closest point of target
@@ -51,6 +52,9 @@ def cloud2cloud_err(
     :return: error
     """
     dists = np.array(pc_source.compute_point_cloud_distance(pc_target))
+    dists = dists[dists > thresh]
+    if dists.shape[0] == 0:
+        return 0
     return method(dists ** 2)
 
 
@@ -113,6 +117,7 @@ def data2cloud(cloud_data: np.ndarray) -> o3d.geometry.PointCloud:
     :param cloud_data: array of point coordinates (m, 3)
     :return: PointCloud object"""
     cloud = o3d.geometry.PointCloud()
+    print(cloud_data)
     cloud.points = o3d.utility.Vector3dVector(cloud_data)
     return cloud
 
@@ -264,7 +269,9 @@ def compute_dist_colors(dist: np.ndarray) -> np.ndarray:
     return rgb
 
 
-def display_dist(dist: np.ndarray, cloud: o3d.geometry.PointCloud, mesh: o3d.geometry.TriangleMesh):
+def display_dist(
+    dist: np.ndarray, cloud: o3d.geometry.PointCloud, mesh: o3d.geometry.TriangleMesh, lightness=1.0, coord_axes=False
+):
     """
     Displays point cloud to mesh distance
     :param dist: distance values (m,)
@@ -276,6 +283,33 @@ def display_dist(dist: np.ndarray, cloud: o3d.geometry.PointCloud, mesh: o3d.geo
     print(f"MEAN dist: {np.mean(dist)}")
     print(f"STD dist: {np.std(dist)}")
     print(f"SUM dist: {np.sum(dist)}")
+    cloud.colors = o3d.utility.Vector3dVector(compute_dist_colors(dist) * lightness)  # assign point colors
+    geometries = [cloud, mesh]
+    if coord_axes:
+        coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame()
+        geometries.append(coord_frame)
+    o3d.visualization.draw_geometries(geometries, mesh_show_wireframe=False, left=400)
 
-    cloud.colors = o3d.utility.Vector3dVector(compute_dist_colors(dist))  # assign point colors
-    o3d.visualization.draw_geometries([cloud, mesh], mesh_show_wireframe=True)
+
+def display_recon_rate(
+    source: o3d.geometry.PointCloud, target: o3d.geometry.PointCloud, thresh=0.1, lightness=1.0, coord_axes=False
+):
+    """
+    TODO
+    :param dist: distance values (m,)
+    :param cloud: Point cloud object; has to have m points
+    :param mesh: reference mesh
+    """
+    # print distance results
+    colors = np.full((len(target.points), 3), np.array([1., 0., 0.])).astype(float)
+
+    dists = np.array(target.compute_point_cloud_distance(source))
+
+    colors[np.where(dists < thresh)] = np.array([0., 1., 0.])
+    target.colors = o3d.utility.Vector3dVector(colors * lightness)
+    target.estimate_normals()
+    geometries = [target]
+    if coord_axes:
+        coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame()
+        geometries.append(coord_frame)
+    o3d.visualization.draw_geometries(geometries, mesh_show_wireframe=False, left=400)

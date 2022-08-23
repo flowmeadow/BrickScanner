@@ -14,7 +14,7 @@ import os
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 IMG_DIR = os.path.join(ROOT_DIR, 'images')
 CAM_DIR = os.path.join(ROOT_DIR, 'data/Logitech C270')
-SETUP_DIR = os.path.join(ROOT_DIR, 'data/setup')
+SETUP_DIR = os.path.join(ROOT_DIR, 'data/real_setup')
 MODEL_DIR = os.path.join(ROOT_DIR, '../pygletPlayground/rendering/models/model_files')
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
 BRICK_DIR = os.path.join(ROOT_DIR, '/home/florian/ldraw/parts')

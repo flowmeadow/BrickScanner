@@ -17,7 +17,7 @@ import numpy as np
 import open3d as o3d
 from definitions import *
 from glpg_flowmeadow.transformations.methods import rot_mat
-from lib.helper.cloud_operations import compute_dist_colors, data2cloud, m2c_dist_rough
+from lib.helper.cloud_operations import compute_dist_colors, data2cloud, m2c_dist_rough, draw_point_clouds, display_dist
 from lib.helper.lego_bricks import load_stl
 from lib.recon.reconstruction import reconstruct_point_cloud
 from lib.simulator.cloud_app import CloudApp
@@ -193,7 +193,7 @@ if __name__ == "__main__":
         cam_beta=45.0,
         gap_window=0,
         y_extension=1.0,
-        step=0.05,
+        step=0.01,
     )
 
     # generate mesh

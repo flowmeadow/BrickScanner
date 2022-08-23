@@ -32,6 +32,7 @@ def get_intersect(a1, a2, b1, b2):
 
 def get_line_points(P, img_shape):
     """
+    TODO
     Given a world to image projection matrix, the upper and lower position of the laser is returned in image coordinates
     :param P:
     :param img_shape:

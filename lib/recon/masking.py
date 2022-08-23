@@ -53,7 +53,7 @@ def mask_segments(img: np.ndarray, ref: np.ndarray) -> np.ndarray:
 
 
 def red_light_mask(
-    img: np.ndarray, line: Tuple[np.ndarray, np.ndarray], gap_window: int = 10, rotation_angle: Optional[float] = None
+    img: np.ndarray, line: Tuple[np.ndarray, np.ndarray], gap_window: int = 0, rotation_angle: Optional[float] = None
 ) -> np.ndarray:
     """
     Generate weighted mask for area of red laser line. Used in simulation

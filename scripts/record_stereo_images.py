@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 """
-@Introduce : Records several stereo images with a stereo camera setup
+@Introduce : Records several stereo images with a stereo camera real_setup
 @File      : record_stereo_images.py
 @Project   : BrickScanner
 @Time      : 11.02.22 20:22
