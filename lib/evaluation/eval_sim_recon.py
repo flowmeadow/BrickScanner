@@ -48,13 +48,27 @@ def plot_data(df_angles: pd.DataFrame, df_dists: pd.DataFrame) -> plt.Figure:
     """
     # init figure
     sns.set()
-    fontsize = 16
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    fig.set_size_inches(15, 5)
+    sns.set(font_scale=1.5)
+    params = {
+        "text.usetex": True,
+        "font.family": "serif",
+    }
+    plt.rcParams.update(params)
 
-    # create violin plot
-    sns.violinplot(data=df_dists, x="dists", ax=ax1)
-    ax1.set_xlabel("error distances [-]", fontsize=fontsize)
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    fig.set_size_inches(15, 4)
+
+    # create box plot
+    flierprops = dict(markerfacecolor="0.55", markersize=5, linestyle="none")
+
+    sns.boxplot(data=df_dists, x="dists", ax=ax1, showfliers=False)
+    tmp = df_dists.copy()
+    min_val, max_val = tmp["dists"].min(), tmp["dists"].max()
+    tmp = tmp.where((tmp["dists"] == min_val) | (tmp["dists"] == max_val)).dropna()
+
+    # sns.stripplot(data=tmp, x="dists", ax=ax1, jitter=0, color="tab:red", marker="D", size=8, edgecolor="black", linewidth=1)
+
+    ax1.set_xlabel(r"\textbf{Point Distances [-]}")
 
     # create regression plot
     sns.regplot(
@@ -62,19 +76,25 @@ def plot_data(df_angles: pd.DataFrame, df_dists: pd.DataFrame) -> plt.Figure:
         x="angles",
         y="mean_dists",
         order=2,
-        scatter_kws={"alpha": 0.1},
+        scatter_kws={"alpha": 0.2},
         line_kws={"color": "black"},
         ax=ax2,
     )
-    ax2.set_xlabel("angle $\gamma$ [°]", fontsize=fontsize)
-    ax2.set_ylabel("mean error distances [-]", fontsize=fontsize)
+    # ax2.set(yscale="log")
+    ax2.set_ylim(0, 0.01)
+    # ax1.ticklabel_format(style="sci", axis="x", scilimits=(0, 0))
+    # ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+    ax1.set_xticks(np.arange(0., 0.005, 0.001))
+    ax1.yaxis.offsetText.set_text("test")
+    ax2.set_xlabel(r"\textbf{Camera View Difference $\gamma$ [°]}")
+    ax2.set_ylabel(r"\textbf{Mean Distance [-]}")
 
     # post process and show
     plt.tight_layout()
     plt.show()
 
 
-def prepare_data(angle_thresh=5, max_dist=0.01) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def prepare_data(angle_thresh=5, max_dist=np.inf) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads and prepares the generated data for plotting
     :param angle_thresh: consider only angles that are between angle_thresh and 180 - angle_thresh
@@ -126,7 +146,7 @@ def prepare_data(angle_thresh=5, max_dist=0.01) -> Tuple[pd.DataFrame, pd.DataFr
 
 def show_exp_data(idx: int):
     """
-    Shows a saved experimental setup
+    Shows a saved experimental real_setup
     :param idx: index of the experiment
     """
     directory = f"{DATA_DIR}/recon_test/eval"
