@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 """
-@Introduce : Calibrates a stereo camera setup based on chess boards
+@Introduce : Calibrates a stereo camera real_setup based on chess boards
 @File      : stereo_calibration.py
 @Project   : BrickScanner
 @Time      : 21.03.22 20:06
@@ -9,6 +9,9 @@
 """
 import os
 import sys
+
+from lib.capturing.calibration import find_chessboard
+from lib.helper.cloud_operations import construct_T
 
 sys.path.append(os.getcwd())  # required to run script from console
 
@@ -20,60 +23,16 @@ from definitions import *
 from lib.camera.stereo_cam import StereoCam
 from lib.helper.data_management import append_img_pair, new_stereo_img_dir
 
-CRITERIA = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.0001)
-
-
-def find_checkerboard(
-    frame_1: np.array,
-    frame_2: np.array,
-    c_size: Tuple[int, int],
-    cell_width: float,
-) -> Tuple[bool, np.array, np.array, np.array]:
-    """
-    Looks for checkerboard corners in images and computes the 3D coordinates of these corners
-    :param frame_1: left image frame
-    :param frame_2: right image frame
-    :param c_size: dimension of the chess corner grid
-    :param cell_width: width of a chess cell square in mm
-    :return: Tuple of 4 elements containing:
-        a boolean return value (only true if checkerboard was detected in both frames)
-        the 2D corner coordinates for frame_1
-        the 2D corner coordinates for frame_2
-        the 3D corner coordinates
-    """
-    ret = False
-
-    # Convert images into grayscale
-    gray_1 = cv2.cvtColor(frame_1, cv2.COLOR_BGR2GRAY)
-    gray_2 = cv2.cvtColor(frame_2, cv2.COLOR_BGR2GRAY)
-
-    # Find 2D corners
-    c_ret_1, corners_1 = cv2.findChessboardCorners(gray_1, c_size, None)
-    c_ret_2, corners_2 = cv2.findChessboardCorners(gray_2, c_size, None)
-
-    # If corners found in both images ...
-    if c_ret_1 and c_ret_2:
-        ret = True
-
-        # refine corner positions
-        corners_1 = cv2.cornerSubPix(gray_1, corners_1, (11, 11), (-1, -1), CRITERIA)
-        corners_2 = cv2.cornerSubPix(gray_2, corners_2, (11, 11), (-1, -1), CRITERIA)
-
-    # coordinates of squares in the checkerboard world space
-    objp = np.zeros((c_size[0] * c_size[1], 3), np.float32)
-    objp[:, :2] = np.mgrid[0 : c_size[0], 0 : c_size[1]].T.reshape(-1, 2)
-    objp = cell_width * objp
-
-    return ret, corners_1, corners_2, objp
-
 
 def calibrate_stereo_setup(
+    path: str,
     cell_width: int,
     c_size: Tuple[int, int],
     img_path: Optional[str] = None,
 ):
     """
-    Calibrate a stereo camera setup using a checkerboard
+    Calibrate a stereo camera real_setup using a checkerboard
+    :param path: file_path to store the calibration data
     :param c_size: dimension of the chess corner grid
     :param cell_width: width of a chess cell square in mm
     :param img_path: specify this to load images from a directory
@@ -102,7 +61,7 @@ def calibrate_stereo_setup(
             if key & 0xFF == ord("q"):
                 break
 
-            ret, corners_1, corners_2, objp = find_checkerboard(frame_1, frame_2, c_size, cell_width)
+            ret, corners_1, corners_2, objp = find_chessboard(frame_1, frame_2, c_size, cell_width)
 
             if ret:
                 tmp_1 = cv2.drawChessboardCorners(frame_1.copy(), c_size, corners_1, ret)
@@ -135,7 +94,7 @@ def calibrate_stereo_setup(
             frame_1 = cv2.imread(f"{img_path}/left/{file_name}")
             frame_2 = cv2.imread(f"{img_path}/right/{file_name}")
 
-            ret, corners_1, corners_2, objp = find_checkerboard(frame_1, frame_2, c_size, cell_width)
+            ret, corners_1, corners_2, objp = find_chessboard(frame_1, frame_2, c_size, cell_width)
 
             if ret:
                 print(f"Found checkerboard in {file_name}")
@@ -162,33 +121,32 @@ def calibrate_stereo_setup(
         img_points_right,
         K_1,
         dist_1,
-        K_1,
-        dist_1,
+        K_2,
+        dist_2,
         frame_1.shape[:2],
-        criteria=CRITERIA,
-        flags=cv2.CALIB_FIX_INTRINSIC,
+        # flags=cv2.CALIB_FIX_INTRINSIC,
     )
     print("Error:", ret)
 
-    print("Save data data? (y/n)")
+    print("Save data? (y/n)")
     inp = input(">> ")
     if inp != "y":
         return
 
-    np.save(f"{SETUP_DIR}/F.npy", F)
-    np.save(f"{SETUP_DIR}/R.npy", R)
-    np.save(f"{SETUP_DIR}/T.npy", T)
-    np.save(f"{SETUP_DIR}/K_left.npy", K_1)
-    np.save(f"{SETUP_DIR}/K_right.npy", K_2)
-    np.save(f"{SETUP_DIR}/dist_left.npy", dist_1)
-    np.save(f"{SETUP_DIR}/dist_right.npy", dist_2)
+    np.save(f"{path}/F.npy", F)
+    np.save(f"{path}/T_12.npy", np.linalg.inv(construct_T(R, T.flatten())))
+    np.save(f"{path}/K_1.npy", K_1)
+    np.save(f"{path}/K_2.npy", K_2)
+    np.save(f"{path}/dist_1.npy", dist_1)
+    np.save(f"{path}/dist_2.npy", dist_2)
+    print("Done!")
 
 
 if __name__ == "__main__":
     cell_width = 5.78
     c_size = (6, 8)
-    # img_path = f"{IMG_DIR}/220322-002703_calib"
-    img_path = None
-
-    calibrate_stereo_setup(cell_width, c_size, img_path=img_path)
-    print("Done!")
+    img_path = f"{IMG_DIR}/220621-200516_calib"
+    # img_path = None
+    folder_name = "real_setup/setup_A"
+    path = f"{DATA_DIR}/{folder_name}"
+    calibrate_stereo_setup(path, cell_width, c_size, img_path=img_path)
