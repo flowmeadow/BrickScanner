@@ -16,13 +16,15 @@ from glpg_flowmeadow.transformations.methods import rotate_vec
 from scipy.spatial import ConvexHull
 
 
-def find_closest_obb_edges(source_edges, target_edges_array, thresh=0.01, max_best: int = None):
+def find_closest_obb_edges(source_edges, target_edges_array, thresh=0.01, max_best: int = None, return_err=False):
     """
     takes the summed quadratic distance between edge lengths as error. Returns an indices array
     containing the positions of errors below the threshold, sorted by their value
     :param source_edges: array (3,)
     :param target_edges_array: array (n, 3)
     :param thresh: maximum allowed error
+    :param max_best: limit the number of files to return
+    :param return_err: return errors in addition
     :return: indices array (m, 3); m <= n
     """
     # volume error
@@ -32,12 +34,13 @@ def find_closest_obb_edges(source_edges, target_edges_array, thresh=0.01, max_be
 
     err = (target_edges_array / source_edges - 1.0) ** 2
     err = np.sum(err, axis=1)
-
     thresh_idcs = np.argwhere(err <= thresh)
     idcs = thresh_idcs[np.argsort(err[thresh_idcs].flatten())].flatten()
 
     if max_best and len(idcs) > max_best:
         idcs = idcs[:max_best]
+    if return_err:
+        return idcs, err
     return idcs
 
 
@@ -176,7 +179,8 @@ def PCA_based_alignment(
 
         # rotate all points, such that n aligns with z axis; all points lie in the xy plane afterwards
         init_angle = 180 * np.arccos(np.dot(n, np.array([0.0, 0.0, 1.0]))) / np.pi
-        init_axis = np.cross(n, np.array([0.0, 0.0, 1.0]))
+        z_axis = np.array([0.0, 0.0, 1.0])
+        init_axis = np.cross(n, z_axis) if np.any(np.abs(n) != z_axis) else z_axis
         pts_proj = rotate_vec(pts_proj, init_axis, init_angle)
 
         # compute convex hull points; by default they are in counterclockwise order
@@ -191,7 +195,7 @@ def PCA_based_alignment(
             edge /= np.linalg.norm(edge)
 
             # find the angle between edge and x-axis
-            angle = -np.arctan(edge[1] / edge[0])
+            angle = -np.arctan(edge[1] / edge[0]) if edge[0] != 0.0 else 0.0
 
             # rotate all points, such that the edge flush with the x-axis
             px, py = pts[:, 0], pts[:, 1]
@@ -209,7 +213,7 @@ def PCA_based_alignment(
                 min_V, min_e = volume, edge
 
         # rotate optimal edge back to 3d space
-        e = np.zeros(3) + min_e
+        e = np.append(min_e, 0.0)
         e = rotate_vec(e.T, init_axis, -init_angle)
 
         # compute cross_product between n and e to obtain the third axis

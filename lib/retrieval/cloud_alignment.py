@@ -25,7 +25,24 @@ from lib.retrieval.bounding_box import (
 )
 
 
-def prepare_cloud(pc: o3d.geometry.PointCloud, random=False) -> o3d.geometry.PointCloud:
+def unique_rotations():
+    """
+    TODO
+    :return:
+    """
+    mats = []
+    for a in [0, 90, 180, 270]:
+        for b in [0, 90, 180, 270]:
+            for c in [0, 270]:
+                R_1 = rot_mat((1, 0, 0), a)
+                R_2 = rot_mat((0, 1, 0), b)
+                R_3 = rot_mat((0, 0, 1), c)
+                mats.append((R_1 @ R_2 @ R_3).astype(int))
+    mats = np.unique(np.array(mats), axis=0)
+    return mats
+
+
+def prepare_cloud(pc: o3d.geometry.PointCloud, random=False, pca_method="all") -> o3d.geometry.PointCloud:
     """
     prepares source point cloud for cloud alignment
     :param pc: source point cloud
@@ -35,7 +52,7 @@ def prepare_cloud(pc: o3d.geometry.PointCloud, random=False) -> o3d.geometry.Poi
     if random:
         pc = rotate_random(pc)
     # align point cloud with world axes
-    pc = PCA_based_alignment(pc)
+    pc = PCA_based_alignment(pc, method=pca_method)
     # move obb center to origin
     pc.translate(-compute_obb_center(pc))
     # estimate normals
@@ -44,7 +61,11 @@ def prepare_cloud(pc: o3d.geometry.PointCloud, random=False) -> o3d.geometry.Poi
 
 
 def align_point_clouds(
-    pc_source: o3d.geometry.PointCloud, pc_target: o3d.geometry.PointCloud, debug=False
+    pc_source: o3d.geometry.PointCloud,
+    pc_target: o3d.geometry.PointCloud,
+    debug=False,
+    pca_method="all",
+    initial_icp=False,
 ) -> np.ndarray:
     """
     Aligns the target point_cloud with source point cloud
@@ -52,27 +73,48 @@ def align_point_clouds(
     :param pc_source: source point cloud
     :param pc_target: target point cloud
     :param debug: show alignment pipeline steps
+    :param pca_method: define pca-method ('all', 'min', 'max')
+    :param initial_icp: perform initial icp optimization
     :return: transformation matrix for target to be aligned with source (4, 4)
     """
     pc_source = copy.deepcopy(pc_source)
     pc_target = copy.deepcopy(pc_target)
     T_target = np.eye(4)
+    # debug_rotation = rot_mat((1., 1., 0.), 90.)
+    # debug_rotation = rot_mat((0., 1.5, -1.5), -60.)
+    debug_rotation = rot_mat((0.0, 1.5, -1.5), -120.0)
+
+    # ICP parameters
+    threshold = 1.0
+    trans_init = np.eye(4)
+
+    # estimate normals for ICP
+    pc_target.estimate_normals()
+    pc_source.estimate_normals()
 
     if debug:
         print("DEBUG: Initial orientation")
-        draw_point_clouds(pc_source, pc_target)
+        pc_t_tmp = copy.deepcopy(pc_target)
+        pc_s_tmp = copy.deepcopy(pc_source)
+        pc_t_tmp = pc_t_tmp.rotate(debug_rotation, np.zeros(3))
+        pc_s_tmp = pc_s_tmp.rotate(debug_rotation, np.zeros(3))
+        draw_point_clouds(pc_s_tmp, pc_t_tmp, coord_axes=False)
 
     # get orientation by PCA based alignment
     # TODO: This is different from:
     #       pc_target, R_init = PCA_based_alignment(pc_target, get_R=True)
     #       Why the heck???
-    _, R_init = PCA_based_alignment(pc_target, get_R=True)
+    _, R_init = PCA_based_alignment(pc_target, get_R=True, method=pca_method)
     pc_target = pc_target.rotate(R_init, center=np.zeros(3))
 
     T_target = construct_T(R=R_init) @ T_target
     if debug:
         print("DEBUG: PCA based alignment")
-        draw_point_clouds(pc_source, pc_target)
+        pc_t_tmp = copy.deepcopy(pc_target)
+        pc_s_tmp = copy.deepcopy(pc_source)
+        pc_t_tmp = pc_t_tmp.rotate(debug_rotation, np.zeros(3))
+        pc_s_tmp = pc_s_tmp.rotate(debug_rotation, np.zeros(3))
+        draw_point_clouds(pc_s_tmp, pc_t_tmp, coord_axes=False)
 
     # move it to world center
     t = -compute_obb_center(pc_target)
@@ -80,19 +122,46 @@ def align_point_clouds(
     pc_target = pc_target.translate(t)
     if debug:
         print("DEBUG: shift OBB center to origin")
-        draw_point_clouds(pc_source, pc_target)
+        pc_t_tmp = copy.deepcopy(pc_target)
+        pc_s_tmp = copy.deepcopy(pc_source)
+        pc_t_tmp = pc_t_tmp.rotate(debug_rotation, np.zeros(3))
+        pc_s_tmp = pc_s_tmp.rotate(debug_rotation, np.zeros(3))
+        draw_point_clouds(pc_s_tmp, pc_t_tmp, coord_axes=False)
+
+    # perform initial ICP
+    if initial_icp:
+        reg_p2l = o3d.pipelines.registration.registration_icp(
+            pc_source,
+            pc_target,
+            threshold,
+            trans_init,
+            o3d.pipelines.registration.TransformationEstimationPointToPlane(),
+        )
+        T_icp = reg_p2l.transformation
+        T_icp = np.linalg.inv(T_icp)
+        T_target = T_icp @ T_target
+        pc_target.transform(T_icp)
+        if debug:
+            print("DEBUG: initial ICP")
+            pc_t_tmp = copy.deepcopy(pc_target)
+            pc_s_tmp = copy.deepcopy(pc_source)
+            pc_t_tmp = pc_t_tmp.rotate(debug_rotation, np.zeros(3))
+            pc_s_tmp = pc_s_tmp.rotate(debug_rotation, np.zeros(3))
+            draw_point_clouds(pc_s_tmp, pc_t_tmp, coord_axes=False)
 
     # rotate around several axes to find best alignment
-    rotation_axes = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [0, 1, 1], [1, 0, 1], [1, 1, 0]])
     min_err = cloud2cloud_err(pc_source, pc_target)  # current error
     R_min = np.eye(3)  # current rotation
-    for ax in rotation_axes:
-        # rotate around axis
-        R = rot_mat(ax, 180)
+    for R in unique_rotations()[1:, :, :]:
+        # rotate point cloud
         pc_target.rotate(R, center=np.zeros(3))
 
+        # if debug:
+        #     print(f"DEBUG: Rotation around {ax}")
+        #     draw_point_clouds(pc_source, pc_target)
+
         # compute new error
-        err = cloud2cloud_err(pc_source, pc_target)
+        err = cloud2cloud_err(pc_source, pc_target, method=np.mean)
         if err < min_err:  # did it get better?
             min_err = err
             R_min = R
@@ -103,13 +172,13 @@ def align_point_clouds(
     T_target = construct_T(R=R_min) @ T_target
     if debug:
         print("DEBUG: Optimized alignment")
-        draw_point_clouds(pc_source, pc_target)
+        pc_t_tmp = copy.deepcopy(pc_target)
+        pc_s_tmp = copy.deepcopy(pc_source)
+        pc_t_tmp = pc_t_tmp.rotate(debug_rotation, np.zeros(3))
+        pc_s_tmp = pc_s_tmp.rotate(debug_rotation, np.zeros(3))
+        draw_point_clouds(pc_s_tmp, pc_t_tmp, coord_axes=False)
 
     # final optimization using ICP
-    threshold = 1.0
-    trans_init = np.eye(4)
-    pc_target.estimate_normals()
-    pc_source.estimate_normals()
     reg_p2l = o3d.pipelines.registration.registration_icp(
         pc_source,
         pc_target,
@@ -123,11 +192,25 @@ def align_point_clouds(
     if debug:
         print("DEBUG: ICP alignment")
         pc_target.transform(T_icp)
-        draw_point_clouds(pc_source, pc_target)
+        pc_t_tmp = copy.deepcopy(pc_target)
+        pc_s_tmp = copy.deepcopy(pc_source)
+        pc_t_tmp = pc_t_tmp.rotate(
+            debug_rotation,
+            np.zeros(
+                3,
+            ),
+        )
+        pc_s_tmp = pc_s_tmp.rotate(
+            debug_rotation,
+            np.zeros(
+                3,
+            ),
+        )
+        draw_point_clouds(pc_s_tmp, pc_t_tmp, coord_axes=False)
     return T_target
 
 
-def find_model(pc_source, debug_file: str = None, threshold=0.1, max_best: int = None):
+def find_model(pc_source, debug_file: str = None, threshold=0.1, max_best: int = None, pca_method="all"):
     """
     Given a source point cloud, search for a model that matches from the Ldraw library
     :param pc_source: source point cloud
@@ -158,14 +241,14 @@ def find_model(pc_source, debug_file: str = None, threshold=0.1, max_best: int =
 
         # convert model to point cloud
         mesh = o3d.io.read_triangle_mesh(f"{STL_DIR}/{file}")
-        pc_target: o3d.geometry.PointCloud = mesh.sample_points_uniformly(10_000)
+        pc_target: o3d.geometry.PointCloud = mesh.sample_points_uniformly(100_000)
 
         # compute best alignment transformation
         T_target = align_point_clouds(pc_source, pc_target, debug=debug)
         pc_target.transform(T_target)
 
         # compute mismatch between clouds
-        err = cloud2cloud_err(pc_source, pc_target, method=np.sum)
+        err = cloud2cloud_err(pc_source, pc_target, method=np.mean)
 
         print(f"\rAlignment for file {file} returned an error of {err:.4f}", end="")
         errors.append(err)
