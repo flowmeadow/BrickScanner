@@ -142,11 +142,11 @@ class SimuStereoApp(StereoApp):
         handle keyboard inputs
         :return: None
         """
-        if self._sim:
-            c_pos = self.cam_fly.camera_pos
-            c_view = self.cam_fly.camera_view
-            self.cam.camera_pos = rot_mat((0, 0, 1), 0.1) @ c_pos
-            self.cam_fly.camera_view = rot_mat((0, 0, 1), 0.1) @ c_view
+        # if self._sim:
+        #     c_pos = self.cam_fly.camera_pos
+        #     c_view = self.cam_fly.camera_view
+        #     self.cam.camera_pos = rot_mat((0, 0, 1), 0.1) @ c_pos
+        #     self.cam_fly.camera_view = rot_mat((0, 0, 1), 0.1) @ c_view
 
         for key in self.keys:
             # start simulator
