@@ -13,13 +13,14 @@ import cv2
 import numpy as np
 
 
-def get_intersect(a1, a2, b1, b2):
+def get_intersect(a1: np.ndarray, a2: np.ndarray, b1: np.ndarray, b2: np.ndarray) -> np.ndarray:
     """
     Returns the point of intersection of the lines passing through a2,a1 and b2,b1.
-    a1: [x, y] a point on the first line
-    a2: [x, y] another point on the first line
-    b1: [x, y] a point on the second line
-    b2: [x, y] another point on the second line
+    :param a1: [x, y] a point on the first line (2,)
+    :param a2: [x, y] another point on the first line (2,)
+    :param b1: [x, y] a point on the second line (2,)
+    :param b2: [x, y] another point on the second line (2,)
+    :return 2D intersection point (2,)
     """
     s = np.vstack([a1, a2, b1, b2])  # s for stacked
     h = np.hstack((s, np.ones((4, 1))))  # h for homogeneous
@@ -30,19 +31,20 @@ def get_intersect(a1, a2, b1, b2):
     return np.array([x / z, y / z])
 
 
-def get_line_points(P, img_shape):
+def get_line_points(P: np.ndarray, img_shape: Tuple[int, int], z_value: float = 0.0) -> Tuple[np.ndarray, np.ndarray]:
     """
-    TODO
-    Given a world to image projection matrix, the upper and lower position of the laser is returned in image coordinates
-    :param P:
-    :param img_shape:
-    :return:
+    Given a world to image projection matrix, the upper and lower position of a line along
+    the x-axis is returned in image coordinates (for a z_value != 0 this line is shifted in z-direction in world space)
+    :param P: camera projection matrix (3, 4)
+    :param img_shape: width and height of the image
+    :param z_value: shift value of the line in world coordinates
+    :return: Two 2D points [(2,), (2,)]
     """
     h, w = img_shape
-    l_1 = P @ np.array([10., 0., 0., 1.])
-    l_2 = P @ np.array([-10., 0., 0., 1.])
-    l_1 = (l_1[:-1] / l_1[-1])
-    l_2 = (l_2[:-1] / l_2[-1])
+    l_1 = P @ np.array([10.0, 0.0, z_value, 1.0])
+    l_2 = P @ np.array([-10.0, 0.0, z_value, 1.0])
+    l_1 = l_1[:-1] / l_1[-1]
+    l_2 = l_2[:-1] / l_2[-1]
     p_1 = get_intersect(l_1, l_2, np.array([0, 0]), np.array([w, 0])).astype(np.int)
     p_2 = get_intersect(l_1, l_2, np.array([0, h]), np.array([w, h])).astype(np.int)
     return p_1, p_2
@@ -118,10 +120,10 @@ def point_from_epiline(lines: np.ndarray, key_pts: np.ndarray, y_extension: floa
 
 
 def find_keypoint_pairs(
-        kpts_1: np.ndarray,
-        kpts_2: np.ndarray,
-        F: np.ndarray,
-        y_extension: float = 2.0,
+    kpts_1: np.ndarray,
+    kpts_2: np.ndarray,
+    F: np.ndarray,
+    y_extension: float = 2.0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
 

@@ -14,6 +14,12 @@ import numpy as np
 from lib.helper.image_operations import rotate_image
 
 
+def debug_frame(img, mask):
+    tmp = cv2.cvtColor((255 * mask).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+    cv2.imshow("as", 0.5 * tmp / 255 + 0.5 * img / 255)
+    cv2.waitKey()
+
+
 def mask_from_ref(img: np.ndarray, ref: np.ndarray) -> np.ndarray:
     """
     Computes a binary mask of the brick region using a reference image without brick
@@ -53,7 +59,11 @@ def mask_segments(img: np.ndarray, ref: np.ndarray) -> np.ndarray:
 
 
 def red_light_mask(
-    img: np.ndarray, line: Tuple[np.ndarray, np.ndarray], gap_window: int = 0, rotation_angle: Optional[float] = None
+    img: np.ndarray,
+    line: Tuple[np.ndarray, np.ndarray],
+    gap_window: int = 0,
+    rotation_angle: Optional[float] = None,
+    sim=False,
 ) -> np.ndarray:
     """
     Generate weighted mask for area of red laser line. Used in simulation
@@ -61,6 +71,7 @@ def red_light_mask(
     :param line: positions of the laser line on the belt at the upper and lower image edge 2 x (2,)
     :param gap_window: defines a window for how many rows to delete around 'gap' rows
     :param rotation_angle: rotate image before masking (Optional)
+    :param sim: set this to True, if images have been generated in simulation
     :return: grayscale mask (h, w)
     """
     # rotate image
@@ -69,14 +80,17 @@ def red_light_mask(
 
     # filter image for red color and generate binary mask
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    mask_red1 = cv2.inRange(hsv, (0, 1, 0), (20, 255, 255))
-    mask_red2 = cv2.inRange(hsv, (160, 1, 0), (180, 255, 255))
-    mask = (mask_red1 + mask_red2) / 255
+    if sim:
+        mask_red1 = cv2.inRange(hsv, (0, 1, 0), (20, 255, 255))
+        mask_red2 = cv2.inRange(hsv, (160, 1, 0), (180, 255, 255))
+        mask = (mask_red1 + mask_red2) / 255
+    else:
+        mask = cv2.inRange(hsv, (0, 0, 250), (180, 5, 255)) / 255
 
     # subtract a line from binary mask, representing the laser light projection on the belt
-    # TODO: might be inaccurate due to integer rounding
-    line_mask = cv2.line(np.zeros(mask.shape), *line, 255, 3)
-    mask = np.clip(cv2.subtract(mask, line_mask), 0, 1.0)
+    if sim:
+        line_mask = cv2.line(np.zeros(mask.shape), *line, 255, 3)
+        mask = np.clip(cv2.subtract(mask, line_mask), 0, 1.0)
 
     # for subpixel refinement, a dilation is performed to increase the region of interest
     kernel = np.ones((2, 2), np.uint8)
@@ -107,8 +121,6 @@ def red_light_mask(
     if rotation_angle:
         mask = rotate_image(mask, -rotation_angle)
 
-    # cv2.imshow("test", mask)
-    # cv2.waitKey()
     return mask
 
 

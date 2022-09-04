@@ -12,7 +12,7 @@ import numpy as np
 
 def epipolar_distance(p_l: np.ndarray, p_r: np.ndarray, F: np.ndarray) -> float:
     """
-    error value to measure the correspondance between two points x (p_l) and x' (p_r) wrt. the fundamental matrix
+    error value to measure the correspondence between two points x (p_l) and x' (p_r) wrt. the fundamental matrix
     :param p_l: 2D point (x, y)
     :param p_r: 2D point (x, y)
     :param F: fundamental matrix
