@@ -60,6 +60,7 @@ class StereoApp(GLScreen):
 
     def __init__(self, image_dir, max_images=1, automated=False, **kwargs):
         """
+        Initialize app
         :param image_dir: directory to store images
         :param max_images: number of image pairs to generate
         :param automated: if True, image generation and app closing is done automatically

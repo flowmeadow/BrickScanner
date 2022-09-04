@@ -13,12 +13,6 @@ import os
 # paths
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 IMG_DIR = os.path.join(ROOT_DIR, 'images')
-CAM_DIR = os.path.join(ROOT_DIR, 'data/Logitech C270')
-SETUP_DIR = os.path.join(ROOT_DIR, 'data/real_setup')
-MODEL_DIR = os.path.join(ROOT_DIR, '../pygletPlayground/rendering/models/model_files')
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
 BRICK_DIR = os.path.join(ROOT_DIR, '/home/florian/ldraw/parts')
 STL_DIR = os.path.join(ROOT_DIR, '/home/florian/ldraw/stl')
-# camera settings
-# VIDEO_RES = (1920, 1080)  # (800, 600)  # (320, 240)
-# IMAGE_RES = (1920, 1080)

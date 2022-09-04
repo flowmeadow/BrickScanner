@@ -22,6 +22,7 @@ def draw_point_clouds(*clouds: List[o3d.geometry.PointCloud], colors: Optional[n
     renders two given point clouds and coordinate axes
     :param clouds: list of point clouds
     :param colors: RGB float ([0., 1.]) color array for n point clouds (n, 3) (Optional)
+    :param coord_axes: If True, draws the coordinate axes in world space
     """
     # define color array
     if colors is None:
@@ -43,16 +44,21 @@ def draw_point_clouds(*clouds: List[o3d.geometry.PointCloud], colors: Optional[n
 
 
 def cloud2cloud_err(
-    pc_source: o3d.geometry.PointCloud, pc_target: o3d.geometry.PointCloud, method: Callable = np.mean, thresh=0
+    pc_source: o3d.geometry.PointCloud,
+    pc_target: o3d.geometry.PointCloud,
+    method: Callable = np.mean,
+    thresh: float = np.inf,
 ) -> float:
     """
     Returns the quadratic and summed distances between each point of source, to the closest point of target
     :param pc_source: source point cloud
     :param pc_target: target point cloud
+    :param method: define the error computation method
+    :param thresh: Consider only distances below a given threshold
     :return: error
     """
     dists = np.array(pc_source.compute_point_cloud_distance(pc_target))
-    dists = dists[dists > thresh]
+    dists = dists[dists < thresh]
     if dists.shape[0] == 0:
         return 0
     return method(dists ** 2)
@@ -117,7 +123,6 @@ def data2cloud(cloud_data: np.ndarray) -> o3d.geometry.PointCloud:
     :param cloud_data: array of point coordinates (m, 3)
     :return: PointCloud object"""
     cloud = o3d.geometry.PointCloud()
-    print(cloud_data)
     cloud.points = o3d.utility.Vector3dVector(cloud_data)
     return cloud
 
@@ -215,7 +220,7 @@ def m2c_dist_rough(
     # compute distance
     dist = cloud.compute_point_cloud_distance(sampled_cloud)
 
-    # o3d.visualization.draw_geometries([cloud, sampled_cloud])
+    # o3d.thesis_stuff.draw_geometries([cloud, sampled_cloud])
     return np.asarray(dist)
 
 
@@ -270,13 +275,21 @@ def compute_dist_colors(dist: np.ndarray) -> np.ndarray:
 
 
 def display_dist(
-    dist: np.ndarray, cloud: o3d.geometry.PointCloud, mesh: o3d.geometry.TriangleMesh, lightness=1.0, coord_axes=False
+    dist: np.ndarray,
+    cloud: o3d.geometry.PointCloud,
+    mesh: o3d.geometry.TriangleMesh,
+    lightness: float = 1.0,
+    coord_axes=False,
+    mesh_only=False,
 ):
     """
     Displays point cloud to mesh distance
     :param dist: distance values (m,)
     :param cloud: Point cloud object; has to have m points
     :param mesh: reference mesh
+    :param lightness: factor to reduce or increase the color lightness of the points
+    :param coord_axes: if True, the coordinate axes in world space are drawn
+    :param mesh_only: if True, display only the wire frame of the given mesh
     """
     # print distance results
     print(f"MAX dist: {np.max(dist)}")
@@ -284,28 +297,39 @@ def display_dist(
     print(f"STD dist: {np.std(dist)}")
     print(f"SUM dist: {np.sum(dist)}")
     cloud.colors = o3d.utility.Vector3dVector(compute_dist_colors(dist) * lightness)  # assign point colors
+    if mesh_only:
+        mesh = o3d.geometry.LineSet.create_from_triangle_mesh(mesh)
     geometries = [cloud, mesh]
     if coord_axes:
         coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame()
         geometries.append(coord_frame)
-    o3d.visualization.draw_geometries(geometries, mesh_show_wireframe=False, left=400)
+    o3d.visualization.draw_geometries(geometries, mesh_show_wireframe=True, left=400)
 
 
 def display_recon_rate(
-    source: o3d.geometry.PointCloud, target: o3d.geometry.PointCloud, thresh=0.1, lightness=1.0, coord_axes=False
+    source: o3d.geometry.PointCloud,
+    target: o3d.geometry.PointCloud,
+    thresh: float = 0.1,
+    lightness: float = 1.0,
+    coord_axes=False,
 ):
     """
-    TODO
-    :param dist: distance values (m,)
-    :param cloud: Point cloud object; has to have m points
-    :param mesh: reference mesh
+    Displays a point clouds reconstruction rate
+    :param source: source point cloud
+    :param target: target point cloud
+    :param thresh: Points below this distance threshold are considered as being reconstructed
+    :param lightness: factor to reduce or increase the color lightness of the points
+    :param coord_axes: if True, the coordinate axes in world space are drawn
+    :return:
     """
-    # print distance results
-    colors = np.full((len(target.points), 3), np.array([1., 0., 0.])).astype(float)
-
+    # compute distances
     dists = np.array(target.compute_point_cloud_distance(source))
 
-    colors[np.where(dists < thresh)] = np.array([0., 1., 0.])
+    # color points with high distance to target red, otherwise green
+    colors = np.full((len(target.points), 3), np.array([1.0, 0.0, 0.0])).astype(float)
+    colors[np.where(dists < thresh)] = np.array([0.0, 1.0, 0.0])
+
+    # prepare for drawing
     target.colors = o3d.utility.Vector3dVector(colors * lightness)
     target.estimate_normals()
     geometries = [target]

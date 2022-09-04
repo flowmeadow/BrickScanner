@@ -70,6 +70,7 @@ class SimuStereoApp(StereoApp):
         **kwargs,
     ):
         """
+        Initialize app
         :param T_W1: Transformation matrix from world space to camera space 1
         :param T_W2: Transformation matrix from camera space 1 to camera space 2
         :param mesh: Open3D triangle mesh of a brick to scan
@@ -141,10 +142,20 @@ class SimuStereoApp(StereoApp):
         handle keyboard inputs
         :return: None
         """
+        if self._sim:
+            c_pos = self.cam_fly.camera_pos
+            c_view = self.cam_fly.camera_view
+            self.cam.camera_pos = rot_mat((0, 0, 1), 0.1) @ c_pos
+            self.cam_fly.camera_view = rot_mat((0, 0, 1), 0.1) @ c_view
+
         for key in self.keys:
             # start simulator
             if key == gl_key.Z:
                 self._sim = True
+            # stop simulator
+            elif key == gl_key.T:
+                self._sim = False
+                self._path_distance = 0
             # switch between cameras
             elif key == gl_key._1:
                 self.cam = self.cam_fly
@@ -163,10 +174,8 @@ class SimuStereoApp(StereoApp):
         """
         if self._sim:
             d = 0.001
-            if self._path_distance > self.y_dist / 2.2:
-                # self._path_distance = 0
-                # self._sim = False
-                pass
+            if self._path_distance > self.y_dist:
+                self._path_distance = 0
             else:
                 self._path_distance += d
 

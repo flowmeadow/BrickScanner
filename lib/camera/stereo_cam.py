@@ -26,6 +26,7 @@ class StereoCam:
         **kwargs,
     ):
         """
+        Initialize Cam
         :param idcs: system ID of the cameras
         :param name: object name
         """

@@ -7,7 +7,6 @@
 @Time      : 21.07.22 20:30
 @Author    : flowmeadow
 """
-import os
 from definitions import *
 from lib.helper.lego_bricks import convert_to_stl
 

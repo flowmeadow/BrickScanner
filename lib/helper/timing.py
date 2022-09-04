@@ -1,24 +1,30 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 """
-@Introduce : TODO
+@Introduce : Contains timing methods
 @File      : timing.py
 @Project   : BrickScanner
 @Time      : 05.05.22 16:13
 @Author    : flowmeadow
 """
 import time
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Optional
 
 import numpy as np
 
 
-def time_fun(fun: Callable, args=None, kwargs=None, repeat=1) -> Tuple[float, object]:
+def time_fun(
+    fun: Callable,
+    args: Optional[list] = None,
+    kwargs: Optional[dict] = None,
+    repeat: int = 1,
+) -> Tuple[float, object]:
     """
+    Method to time a given function several times to get the execution time average
     :param fun: function to execute
-    :param repeat: number of executions
     :param args: function arguments
     :param kwargs: function keyword arguments
+    :param repeat: number of executions
     :return: mean execution time, function return
     """
     if args is None:

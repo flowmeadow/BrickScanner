@@ -10,7 +10,7 @@
 
 import copy
 import pickle
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import open3d as o3d
@@ -25,10 +25,11 @@ from lib.retrieval.bounding_box import (
 )
 
 
-def unique_rotations():
+def unique_rotations() -> List[np.ndarray]:
     """
-    TODO
-    :return:
+    Returns a list of unique rotation matrices that perform rotations around the x-, y- and z-axis
+    for 0°, 90°, 180° and 270°.
+    :return: 24 entry list of rotation matrices (3, 3)
     """
     mats = []
     for a in [0, 90, 180, 270]:
@@ -42,11 +43,16 @@ def unique_rotations():
     return mats
 
 
-def prepare_cloud(pc: o3d.geometry.PointCloud, random=False, pca_method="all") -> o3d.geometry.PointCloud:
+def prepare_cloud(
+    pc: o3d.geometry.PointCloud,
+    random: bool = False,
+    pca_method: str = "all",
+) -> o3d.geometry.PointCloud:
     """
     prepares source point cloud for cloud alignment
     :param pc: source point cloud
     :param random: if True, the cloud is rotated randomly first
+    :param pca_method: PCA method used for alignment ("all", "min", "max")
     :return: source point cloud
     """
     if random:
@@ -63,9 +69,9 @@ def prepare_cloud(pc: o3d.geometry.PointCloud, random=False, pca_method="all") -
 def align_point_clouds(
     pc_source: o3d.geometry.PointCloud,
     pc_target: o3d.geometry.PointCloud,
-    debug=False,
-    pca_method="all",
-    initial_icp=False,
+    debug: bool = False,
+    pca_method: str = "all",
+    initial_icp: bool = False,
 ) -> np.ndarray:
     """
     Aligns the target point_cloud with source point cloud
@@ -73,9 +79,9 @@ def align_point_clouds(
     :param pc_source: source point cloud
     :param pc_target: target point cloud
     :param debug: show alignment pipeline steps
-    :param pca_method: define pca-method ('all', 'min', 'max')
+    :param pca_method: PCA method used for alignment ("all", "min", "max")
     :param initial_icp: perform initial icp optimization
-    :return: transformation matrix for target to be aligned with source (4, 4)
+    :return: transformation matrix for target to align it with source (4, 4)
     """
     pc_source = copy.deepcopy(pc_source)
     pc_target = copy.deepcopy(pc_target)
@@ -156,10 +162,6 @@ def align_point_clouds(
         # rotate point cloud
         pc_target.rotate(R, center=np.zeros(3))
 
-        # if debug:
-        #     print(f"DEBUG: Rotation around {ax}")
-        #     draw_point_clouds(pc_source, pc_target)
-
         # compute new error
         err = cloud2cloud_err(pc_source, pc_target, method=np.mean)
         if err < min_err:  # did it get better?
@@ -210,12 +212,18 @@ def align_point_clouds(
     return T_target
 
 
-def find_model(pc_source, debug_file: str = None, threshold=0.1, max_best: int = None, pca_method="all"):
+def find_model(
+    pc_source: o3d.geometry.PointCloud,
+    debug_file: str = None,
+    threshold: float = 0.1,
+    max_best: Optional[int] = None,
+):
     """
     Given a source point cloud, search for a model that matches from the Ldraw library
     :param pc_source: source point cloud
     :param debug_file: file_name of the correct model (Optional)
     :param threshold: maximum allowed error for PCA OBB comparison
+    :param max_best: maximum amount of files used from preselection
     :return: [used files, alignment errors, list of target transformations (4, 4), match probabilities for each file]
     """
     if debug_file:
@@ -266,10 +274,10 @@ def find_model(pc_source, debug_file: str = None, threshold=0.1, max_best: int =
 
 def show_results(
     files: List[str],
-    errors: np.ndarray = None,
-    transformations: List[np.ndarray] = None,
-    percentages: np.ndarray = None,
-    pc_source: o3d.geometry.PointCloud = None,
+    errors: Optional[np.ndarray] = None,
+    transformations: Optional[List[np.ndarray]] = None,
+    percentages: Optional[np.ndarray] = None,
+    pc_source: Optional[o3d.geometry.PointCloud] = None,
 ):
     """
     Show alignment results for a file selection
