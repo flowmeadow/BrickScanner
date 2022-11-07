@@ -144,6 +144,7 @@ a virtual brick is forwarded through the laser blade, realized with a shader.
 <img src="./demo_images/rendered_l.png" width="308"/>
 <img src="./demo_images/rendered_r.png" width="308"/>
 <\p>
+
 ### 3D Reconstruction
 To obtain a 3D point cloud of the model, first, the section in the image pairs containing the laser light projection
 is isolated. Afterwards, using the epipolar constraints of the stereo camera views, corresponding 2D points from each 
@@ -151,9 +152,11 @@ two images are determined. These point pairs are used to compute the respective 
 
 **Simulation-based reconstructed point clouds for exemplary bricks**
 
+<p float="left">
 <img src="./demo_images/sim_3298.gif" height="200"/>
 <img src="./demo_images/sim_3823.gif" height="200"/>
 <img src="./demo_images/sim_6143.gif" height="200"/>
+<\p>
 
 ### Point Cloud Alignment and Rating
 Using Principal Component Analysis (PCA) and the Iterative Closest Point (ICP) algorithm, the most similar brick models
@@ -162,10 +165,12 @@ bricks gives an estimate for the brick ID.
 
 **Demonstration of the different alignment steps**
 
+<p float="left">
 <img src="./demo_images/3039_1.png" height="156"/>
 <img src="./demo_images/3039_2.png" height="156"/>
 <img src="./demo_images/3039_3.png" height="156"/>
 <img src="./demo_images/3039_4.png" height="156"/>
+<\p>
 
 ## 3D Reconstruction from real Image Pairs
 
