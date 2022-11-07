@@ -140,9 +140,10 @@ a virtual brick is forwarded through the laser blade, realized with a shader.
 
 **Rendered images from the left and right camera view**
 
+<p float="left">
 <img src="./demo_images/rendered_l.png" width="308"/>
 <img src="./demo_images/rendered_r.png" width="308"/>
-
+<\p>
 ### 3D Reconstruction
 To obtain a 3D point cloud of the model, first, the section in the image pairs containing the laser light projection
 is isolated. Afterwards, using the epipolar constraints of the stereo camera views, corresponding 2D points from each 
