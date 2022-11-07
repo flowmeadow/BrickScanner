@@ -195,7 +195,7 @@ def double_side_recon(
     if show_result:
         dist = m2c_dist_rough(mesh, pc)
         mesh.compute_triangle_normals()
-        display_dist(dist, pc, mesh)
+        display_dist(dist, pc, mesh, mesh_only=True)
 
     # rescale point cloud back to cm and save point cloud
     pc.scale(1 / scale_factor, pc.get_center())

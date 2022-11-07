@@ -32,7 +32,7 @@ if __name__ == "__main__":
     pc_source = prepare_cloud(pc_source)
 
     # find the best alignment matches
-    files, errors, transformations, percentages = ret = find_model(
+    files, errors, transformations = ret = find_model(
         pc_source, debug_file=f"{brick_id}.stl" if debug else None
     )
 

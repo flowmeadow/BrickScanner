@@ -14,5 +14,5 @@ import os
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 IMG_DIR = os.path.join(ROOT_DIR, 'images')
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
-BRICK_DIR = os.path.join(ROOT_DIR, '/home/florian/ldraw/parts')
-STL_DIR = os.path.join(ROOT_DIR, '/home/florian/ldraw/stl')
+BRICK_DIR = '/home/florian/ldraw/parts'
+STL_DIR = '/home/florian/ldraw/stl'

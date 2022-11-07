@@ -1,44 +1,5 @@
-<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
-<a name="readme-top"></a>
-<!--
-*** Thanks for checking out the Best-README-Template. If you have a suggestion
-*** that would make this better, please fork the repo and create a pull request
-*** or simply open an issue with the tag "enhancement".
-*** Don't forget to give the project a star!
-*** Thanks again! Now go create something AMAZING! :D
--->
-
-
-
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-
-<!--
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
--->
 [![MIT License][license-shield]][license-url]
 [![LinkedIn][linkedin-shield]][linkedin-url]
-
-
-
-<!-- PROJECT LOGO -->
-<!--
-<br />
-<div align="center">
-  <a href="https://github.com/flowmeadow/BrickScanner">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
-  </a>
--->
-<h3 align="center">BrickScanner</h3>
 
 
 <!-- TABLE OF CONTENTS -->
@@ -58,12 +19,17 @@
         <li><a href="#installation">Installation</a></li>
       </ul>
     </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
+   <li>
+      <a href="#pipeline">Brick Identification Pipeline</a>
+      <ul>
+        <li><a href="#image-generation">Simulation-based Image Generation</a></li>
+        <li><a href="#reconstruction">3D Reconstruction</a></li>
+        <li><a href="#alignment">Point Cloud Alignment and Rating</a></li>
+      </ul>
+   </li>
+    <li><a href="#real-reconstruction">3D Reconstruction from real Image Pairs</a></li>
+    <li><a href="#color-detection">Color Detection</a></li>
     <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
 </details>
 
@@ -72,158 +38,163 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+This project contains the source code used in my master thesis written at the Technical 
+University of Darmstadt in 2022. 
 
-Here's a blank template to get started: To avoid retyping too much info. Do a search and replace with your text editor for the following: `github_username`, `repo_name`, `twitter_handle`, `linkedin_username`, `email_client`, `email`, `project_title`, `project_description`
+**Title:** 
+Automatic detection and sorting by using optical
+methods and enhanced computer vision
+algorithms on the example of LEGO® Bricks - Part: Scanning, 3D-Reconstruction & Model
+Matching
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+**Abstract:**
+In cooperation, the Institute of Materials Science (If W) and the Department of Graphical Interactive Systems
+(GRIS) initiated the project to implement a modern LEGO ® sorting machine. Due to the scope of this project,
+the realization of the machine was divided into three works.
 
+In this work, a novel 3D reconstruction pipeline is introduced, combining two stereo camera setups with
+line lasers, for geometry and color independent shape retrieval. This setup allows reconstructing objects
+on continuous conveyor belt systems in real time. In addition, an OpenGL simulator is presented, which
+provides virtual image rendering for the introduced setup and builds the transition between OpenGL and
+OpenCV conventions. With that, the reconstruction pipeline, implemented and tested in simulation, is directly
+applicable to the real setup.
 
+Furthermore, a classification for reconstructed point clouds is performed to categorize each reconstructed
+brick to one of the models from a database with approximately 5,000 models. Therefore, a bounding box
+similarity search, based on Principal Component Analysis (PCA), is performed, which reduces the amount of
+models for point cloud registration and alignment quality measure.
 
 ### Built With
 
+[![Bootstrap][Python.badge]][Python-url]
 [![Bootstrap][OpenGL.badge]][OpenGL-url]
 [![Bootstrap][OpenCV.badge]][OpenCV-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-
-
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
 ### Prerequisites
 
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
+This project uses the detailed brick models, provided by the [LDraw](https://www.ldraw.org/) community. 
+In order to use this library the following steps are required.
+
+1. Download and unpack the complete [LDraw Parts Library](https://www.ldraw.org/library/updates/complete.zip)
+
+2. Install [LDView](https://tcobbs.github.io/ldview/), a real-time 3D viewer for displaying LDraw models. 
+Its command line backend allows converting the LDraw models to the STL file format.
+After installation, check if the application is executable from command line via
+   ```sh
+   LDView
+   ```
 
 ### Installation
+1. Clone the repo
+   ```sh
+   git clone https://github.com/flowmeadow/BrickScanner.git
+   ```
+2. Install the required pip packages
+   ```sh
+   pip install -r requirements.txt
+   ```
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
+3. Open the file `definitions.py` and update the paths `IMG_DIR`, `DATA_DIR`, `BRICK_DIR` and `STL_DIR`
+   * Set `BRICK_DIR` to the current location of the 'parts' folder, which is inside the 
+   extracted LDraw parts library
+   * Create and reference empty folders for `IMG_DIR`, `DATA_DIR` and `STL_DIR`
+   ```python
+   # paths
+   ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+   IMG_DIR = os.path.join(ROOT_DIR, '_images')
+   DATA_DIR = os.path.join(ROOT_DIR, '_data')
+   BRICK_DIR = '/home/user/ldraw/parts'
+   STL_DIR = os.path.join(ROOT_DIR, '_stl')
+   ```
+
+4. Convert models to the STL format with
    ```sh
-   git clone https://github.com/github_username/repo_name.git
+   python scripts/create_stl_files.py
    ```
-3. Install NPM packages
-   ```sh
-   npm install
-   ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
+   This will start the conversion of each brick. Each model from `BRICK_DIR` is opened with the LDView application, 
+converted to the STL format and stored in `STL_DIR`. This progress can take some time and requires approximately 2GB
+of memory.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
 <!-- USAGE EXAMPLES -->
-## Usage
+# Brick Identification Pipeline
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+In this section, the simulation-based brick identification pipeline is introduced. 
+An example for all the following steps is given in [demo.py](demo.py).
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+### Simulation-based Image Generation
+To evaluate the proposed pipeline, an OpenGL simulator is used to render stereo image pairs while 
+a virtual brick is forwarded through the laser blade, realized with a shader.
+
+**Screenshot of the OpenGL simulator**
+
+<img src="./demo_images/simulator.png" width="620"/>
+
+**Rendered images from the left and right camera view**
+
+<img src="./demo_images/rendered_l.png" width="308"/>
+<img src="./demo_images/rendered_r.png" width="308"/>
+
+### 3D Reconstruction
+To obtain a 3D point cloud of the model, first, the section in the image pairs containing the laser light projection
+is isolated. Afterwards, using the epipolar constraints of the stereo camera views, corresponding 2D points from each 
+two images are determined. These point pairs are used to compute the respective 3D points.
+
+**Simulation-based reconstructed point clouds for exemplary bricks**
+
+<img src="./demo_images/sim_3298.gif" height="200"/>
+<img src="./demo_images/sim_3823.gif" height="200"/>
+<img src="./demo_images/sim_6143.gif" height="200"/>
+
+### Point Cloud Alignment and Rating
+Using Principal Component Analysis (PCA) and the Iterative Closest Point (ICP) algorithm, the most similar brick models
+from the LDraw database are selected and the optimal alignment is determined. Using the final alignment error of these 
+bricks gives an estimate for the brick ID.
+
+**Demonstration of the different alignment steps**
+
+<img src="./demo_images/3039_1.png" height="156"/>
+<img src="./demo_images/3039_2.png" height="156"/>
+<img src="./demo_images/3039_3.png" height="156"/>
+<img src="./demo_images/3039_4.png" height="156"/>
+
+## 3D Reconstruction from real Image Pairs
+
+WIP
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-### Color Detection
 
-### Reconstruction
+## Color Detection
 
-### Model Alignment
-
-
-
-<!-- ROADMAP -->
-<!--
-## Roadmap
-
-- [ ] Feature 1
-- [ ] Feature 2
-- [ ] Feature 3
-    - [ ] Nested Feature
-
-See the [open issues](https://github.com/github_username/repo_name/issues) for a full list of proposed features (and known issues).
+WIP
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
--->
-
-
-<!-- CONTRIBUTING -->
-<!--
-## Contributing
-
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
--->
 
 
 <!-- LICENSE -->
 ## License
 
-Distributed under the MIT License. See `LICENSE.txt` for more information.
+Distributed under the MIT License. See `LICENSE.rst` for more information.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- CONTACT -->
-<!--
-## Contact
-
-Your Name - [@twitter_handle](https://twitter.com/twitter_handle) - email@email_client.com
-
-Project Link: [https://github.com/github_username/repo_name](https://github.com/github_username/repo_name)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
--->
-
-
-<!-- ACKNOWLEDGMENTS -->
-<!--
-## Acknowledgments
-
-* []()
-* []()
-* []()
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
--->
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/github_username/repo_name.svg?style=for-the-badge
-[contributors-url]: https://github.com/github_username/repo_name/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/github_username/repo_name.svg?style=for-the-badge
-[forks-url]: https://github.com/github_username/repo_name/network/members
-[stars-shield]: https://img.shields.io/github/stars/github_username/repo_name.svg?style=for-the-badge
-[stars-url]: https://github.com/github_username/repo_name/stargazers
-[issues-shield]: https://img.shields.io/github/issues/github_username/repo_name.svg?style=for-the-badge
-[issues-url]: https://github.com/github_username/repo_name/issues
-[license-shield]: https://img.shields.io/github/license/github_username/repo_name.svg?style=for-the-badge
-[license-url]: https://github.com/github_username/repo_name/blob/master/LICENSE.txt
+[license-shield]: https://img.shields.io/badge/License-MIT-<COLOR>?style=for-the-badge
+[license-url]: https://github.com/flowmeadow/pygletPlayground/blob/e45b61bddf8b22932f94ca77957ece683284a3dd/LICENSE.rst
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://www.linkedin.com/in/florian-wiese-155527a4/
-[product-screenshot]: images/screenshot.png
 [Python.badge]: https://img.shields.io/static/v1?message=Python&logo=python&color=1182c3&logoColor=white&label=%20&style=for-the-badge
-[Python-url]: https://vuejs.org/
+[Python-url]: https://www.python.org/
 [OpenGL.badge]: https://img.shields.io/static/v1?message=OpenGL&logo=opengl&color=1182c3&logoColor=white&label=%20&style=for-the-badge
 [OpenGL-url]: https://www.opengl.org/
 [OpenCV.badge]: https://img.shields.io/static/v1?message=OpenCV&logo=opencv&color=1182c3&logoColor=white&label=%20&style=for-the-badge
