@@ -16,7 +16,7 @@ from lib.retrieval.cloud_alignment import (find_model, prepare_cloud,
 from scripts.sim_recon_setup import double_side_recon
 
 if __name__ == "__main__":
-    # define directory for epipolar geometry data and reconstructed pointcloud
+    # define directory for epipolar geometry data and reconstructed point cloud
     data_dir = f"{DATA_DIR}/demo"
     # define directory for the stereo image pairs
     img_dir = f"{IMG_DIR}/demo"
@@ -25,9 +25,9 @@ if __name__ == "__main__":
 
     # settings for image generation and 3D reconstruction
     settings = dict(
-        automated=False,  # if True, image generation starts and stops automatically
+        automated=True,  # if True, image generation starts and stops automatically
         generate_new=True,  # if True, generate new images
-        show_result=True,  # show reconstructed pointcloud
+        show_result=True,  # show reconstructed point cloud
         step=0.02,  # reconstruction resolution
     )
     double_side_recon(data_dir, img_dir, brick_id, **settings)
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     pc = o3d.io.read_point_cloud(f"{data_dir}/recon_{brick_id}.pcd")
     pc = prepare_cloud(pc)
 
-    # find best models including the errors and transformations to match the reconstructed pointcloud
+    # find best models including the errors and transformations to match the reconstructed point cloud
     files, errors, transformations = find_model(
         pc,
         debug_file=f"{brick_id}.stl",  # select a model file for alignment visualization
